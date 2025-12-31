@@ -1,0 +1,20 @@
+{
+  "language": "zh-CN",
+  "available_languages": ["zh-CN", "en-US", "ja-JP"],
+  "theme": {
+    "mode": "light",
+    "primary_color": "#FFB6C1",
+    "accent_color": "#87CEEB",
+    "font_family": "Noto Sans SC, sans-serif"
+  },
+  "reader": {
+    "scroll_mode": "vertical",
+    "panel_gap": 16,
+    "show_panel_numbers": false,
+    "auto_play": false
+  },
+  "editor": {
+    "show_source_citation": true,
+    "highlight_key_terms": true
+  }
+}
