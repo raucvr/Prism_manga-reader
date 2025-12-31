@@ -1,0 +1,523 @@
+# Chiikawa Character Reference Library
+# 角色视觉参考库 - 用于多模态图像生成
+# Based on official Chiikawa (ちいかわ) by Nagano
+
+# ============================================================
+# CHIIKAWA UNIVERSE
+# Creator: Nagano
+# Style: Thick hand-drawn outlines, soft pastel colors,
+#        simple shapes, clean vector-like look, flat shading
+# ============================================================
+
+# ============================================================
+# 参考图片目录结构 (config/character_images/)
+# 每个角色需要 3-5 张高质量参考图片：
+#   - {character}/reference_1.png  主视角全身图
+#   - {character}/reference_2.png  不同表情
+#   - {character}/reference_3.png  动作姿态
+#   - {character}/expression_{emotion}.png  特定表情
+# ============================================================
+
+characters:
+  # ==================== 主角三人组 ====================
+
+  chiikawa:
+    name: "吉伊卡哇"
+    name_en: "Chiikawa"
+    name_jp: "ちいかわ"
+    role: "protagonist"
+    description: "The titular protagonist. Gentle, sweet, shy, and easily gets nervous which results in anxious tears."
+
+    # 参考图片 - 用于多模态图像生成
+    # 将图片放到 config/character_images/chiikawa/ 目录
+    reference_images:
+      # 主要参考图（必须）- 至少3张
+      main:
+        - "chiikawa/reference_1.png"   # 正面全身标准姿态
+        - "chiikawa/reference_2.png"   # 侧面或3/4视角
+        - "chiikawa/reference_3.png"   # 不同动作姿态
+      # 表情参考图（可选）- 提高特定表情的准确性
+      expressions:
+        happy: "chiikawa/expr_happy.png"
+        crying: "chiikawa/expr_crying.png"
+        confused: "chiikawa/expr_confused.png"
+        surprised: "chiikawa/expr_surprised.png"
+        scared: "chiikawa/expr_scared.png"
+
+    # 详细视觉特征 - 用于图像生成提示词
+    visual_traits:
+      body: "small white creature, bipedal stance, round body shape, very small and cute"
+      face: "beady black dot eyes, pink blush marks on both cheeks, cat-like muzzle with outlined bottom lip"
+      ears: "small round white ears on top of head"
+      tail: "small spherical white tail"
+      colors:
+        primary: "white"
+        accent: "pink (blush, accessories)"
+
+    # 完整的角色描述提示词 (给 Gemini 图像生成用)
+    style_prompt: |
+      CHIIKAWA (ちいかわ) by Nagano:
+      - Body: VERY SMALL white round fluffy creature, chibi proportions (head is 60% of body), stubby arms and legs
+      - Face: TWO small black dot eyes (no pupils, just solid dots), pink circular blush marks on BOTH cheeks, small cat-like snout/muzzle with subtle bottom lip outline
+      - Ears: TWO small round white ears on TOP of head
+      - Tail: Small white pom-pom ball tail
+      - IMPORTANT: NO nose visible, NO detailed features, extremely simplified kawaii design
+      - Art style: Thick black hand-drawn outlines, flat pastel colors, NO gradients, NO shading, clean vector look
+
+    # 表情库 - 每个表情都有完整的图像生成提示词
+    expressions:
+      happy:
+        description: "开心的表情，闪亮的眼睛"
+        visual: "sparkly beady eyes, gentle smile, pink blush visible, content expression"
+        prompt: "Chiikawa happy expression: sparkly beady eyes looking up, gentle small smile, pink blushing cheeks glowing, content and joyful mood"
+
+      crying:
+        description: "哭泣，泪流满面"
+        visual: "teardrop outlines running down face, furrowed eyebrows, distressed"
+        prompt: "Chiikawa crying: large teardrops streaming down white face, eyebrows furrowed upward in distress, trembling, very sad expression"
+
+      confused:
+        description: "困惑，歪头"
+        visual: "tilted head, question marks floating, worried beady eyes"
+        prompt: "Chiikawa confused: head tilted to one side, question marks floating nearby, worried beady eyes, puzzled expression"
+
+      surprised:
+        description: "惊讶，张大嘴"
+        visual: "wide open beady eyes, small open mouth showing shock"
+        prompt: "Chiikawa surprised: eyes wide open in shock, small mouth agape, exclamation marks around head, startled pose"
+
+      thinking:
+        description: "思考，若有所思"
+        visual: "looking upward, small contemplation expression, hand near chin"
+        prompt: "Chiikawa thinking: beady eyes looking upward, small paw near chin, contemplative expression, thought bubble nearby"
+
+      scared:
+        description: "害怕，发抖"
+        visual: "trembling, tears forming, trying to hide, wavy outline showing shaking"
+        prompt: "Chiikawa scared: body trembling with wavy motion lines, tears forming in eyes, trying to hide or shrink away, terrified expression"
+
+      determined:
+        description: "下定决心，勇敢"
+        visual: "focused eyes, slight determined frown, brave stance despite small size"
+        prompt: "Chiikawa determined: focused beady eyes with determined glint, small fists clenched, brave stance despite being nervous"
+
+    # 常用配件
+    accessories:
+      default: "pink bear-shaped pouch"
+      work: "pink sasumata (catching pole)"
+      outfit: "pink onesie"
+
+    # 性格特点 - 影响对白风格
+    personality: |
+      你是一个可爱、有点胆小但很努力的小动物。
+      说话时会用简单可爱的语气，经常说"哇..."、"呜呜"、"诶...？"。
+      面对困难会哭泣但不会放弃，在朋友的帮助下会变得勇敢。
+    speech_patterns:
+      - "Wa... (哇...)"
+      - "Fuu... (呼...)"
+      - "Eh?! (诶?!)"
+      - "呜呜..."
+
+    # 在科普漫画中的角色定位
+    comic_role: "The confused learner who represents the reader. Gets overwhelmed by complex concepts but gradually understands with help."
+
+  hachiware:
+    name: "小八"
+    name_en: "Hachiware"
+    name_jp: "ハチワレ"
+    role: "deuteragonist"
+    description: "The cheerful optimist with can-do attitude. Smart, patient, always helps Chiikawa overcome fears."
+
+    # 参考图片
+    reference_images:
+      main:
+        - "hachiware/reference_1.png"   # 正面全身，蓝色耳尖尾尖清晰可见
+        - "hachiware/reference_2.png"   # 侧面视角
+        - "hachiware/reference_3.png"   # 讲解/教学姿态
+      expressions:
+        happy: "hachiware/expr_happy.png"
+        explaining: "hachiware/expr_explaining.png"
+        encouraging: "hachiware/expr_encouraging.png"
+        worried: "hachiware/expr_worried.png"
+
+    visual_traits:
+      body: "cat-like chiikawa creature, bipedal stance, similar size to Chiikawa"
+      face: "beady black eyes, pink blush, uniquely SHORT TINY eyebrows above eyes, small fangs visible when mouth open"
+      ears: "cat-like pointed ears with distinctive BLUE TIPS"
+      tail: "cat tail with distinctive BLUE TIP"
+      colors:
+        primary: "white"
+        accent: "blue (ear tips, tail tip)"
+        blush: "pink"
+
+    style_prompt: |
+      HACHIWARE (ハチワレ) by Nagano - Chiikawa's cat friend:
+      - Body: White cat-like creature similar size to Chiikawa, chibi proportions, stubby arms and legs
+      - Face: TWO small black dot eyes, pink circular blush on cheeks, TWO VERY SHORT horizontal eyebrow lines above eyes, small fangs/teeth visible when mouth open
+      - Ears: TWO pointed cat ears with BLUE COLOR on the TIPS (critical feature!)
+      - Tail: Long cat tail with BLUE TIP (must match ear color!)
+      - DISTINGUISHING FEATURES: Blue-tipped ears and tail are MANDATORY - this is what makes Hachiware unique
+      - Art style: Thick black hand-drawn outlines, flat pastel colors, NO gradients, NO shading, clean vector look
+
+    expressions:
+      happy:
+        description: "开心，露出小虎牙"
+        visual: "bright eyes, wide smile showing small fangs, ears perked up"
+        prompt: "Hachiware happy: bright beady eyes sparkling, wide cheerful smile showing tiny fangs, blue-tipped ears perked up alertly, joyful energetic mood"
+
+      explaining:
+        description: "解释说明，教师姿态"
+        visual: "confident posture, one paw raised pointing, focused determined eyes"
+        prompt: "Hachiware explaining: confident teacher pose with one paw raised pointing upward, focused eyes, blue-tipped ears alert, small fangs showing as mouth opens to speak"
+
+      surprised:
+        description: "惊讶，耳朵竖起"
+        visual: "wide eyes, blue-tipped ears standing straight up, mouth open"
+        prompt: "Hachiware surprised: eyes wide open, blue-tipped ears standing straight up in shock, mouth agape showing fangs"
+
+      thinking:
+        description: "思考，若有所思"
+        visual: "paw on chin, thoughtful expression, slight smile"
+        prompt: "Hachiware thinking: paw placed on chin in contemplation, thoughtful expression, slight knowing smile, calm demeanor"
+
+      worried:
+        description: "担心朋友"
+        visual: "concerned expression, tiny eyebrows furrowed, looking at friend"
+        prompt: "Hachiware worried: tiny eyebrows furrowed with concern, worried eyes looking at friend, blue-tipped ears slightly lowered"
+
+      encouraging:
+        description: "鼓励加油"
+        visual: "thumbs up, confident smile, sparkles around"
+        prompt: "Hachiware encouraging: giving thumbs up with paw, confident warm smile, sparkles around, supportive energetic pose"
+
+    accessories:
+      work: "blue sasumata"
+
+    personality: |
+      你是一个开朗自信的猫咪，是吉伊卡哇最好的朋友。
+      说话时充满活力和耐心，喜欢鼓励别人，是天生的老师。
+      解释问题时会很有条理，用生动的例子来说明复杂的概念。
+    speech_patterns:
+      - "没问题的！"
+      - "Let me explain!"
+      - "加油！"
+      - "原来如此～"
+
+    comic_role: "The patient teacher who breaks down complex concepts into simple terms. Always supportive and encouraging."
+
+  usagi:
+    name: "小兔"
+    name_en: "Usagi"
+    name_jp: "うさぎ"
+    role: "tritagonist"
+    description: "The chaotic wildcard. Extremely energetic, fearless, unpredictable. Brings humor and action."
+
+    # 参考图片
+    reference_images:
+      main:
+        - "usagi/reference_1.png"   # 正面全身，黄色身体高耳朵
+        - "usagi/reference_2.png"   # 嘟嘴表情特写
+        - "usagi/reference_3.png"   # 动作/战斗姿态
+      expressions:
+        default: "usagi/expr_default.png"   # 标志性淡定脸
+        yelling: "usagi/expr_yelling.png"   # 大喊
+
+    visual_traits:
+      body: "yellow rabbit creature, bipedal stance, compact body"
+      face: "SMALLER beady eyes than others, LONG curved eyebrows wrapping around eyes, pronounced POUTY bottom lip"
+      ears: "very TALL UPRIGHT yellow rabbit ears"
+      tail: "small round rabbit tail"
+      colors:
+        primary: "yellow"
+        accent: "pink blush"
+      special_features:
+        - "Cannot blink or close eyes"
+        - "Sleeps with eyes open"
+        - "Expression rarely changes even in danger"
+
+    style_prompt: |
+      USAGI (うさぎ) by Nagano - Chiikawa's rabbit friend:
+      - Body: YELLOW rabbit creature, chibi proportions, stubby arms and legs, completely YELLOW fur
+      - Face: TWO SMALLER black dot eyes than Chiikawa, LONG CURVED eyebrows that wrap around eyes, pronounced POUTY bottom lip (perpetual pouting expression), pink blush marks
+      - Ears: TWO VERY TALL UPRIGHT yellow rabbit ears (much taller than head!)
+      - Tail: Small round white/yellow rabbit tail
+      - DISTINGUISHING FEATURES: Yellow color, very tall ears, pouty lip expression, eyes NEVER close, calm unchanging face expression
+      - Personality in art: Always looks calm/unbothered even in chaos, characteristic blank stare
+      - Art style: Thick black hand-drawn outlines, flat pastel colors, NO gradients, NO shading, clean vector look
+
+    expressions:
+      default:
+        description: "默认表情，永远淡定"
+        visual: "unchanging calm face, pouty lips, minimal expression despite any situation"
+        prompt: "Usagi default expression: characteristic unchanging calm face, small beady eyes, long curved eyebrows, pronounced pouty bottom lip, yellow fur, tall upright ears"
+
+      yelling:
+        description: "大喊（呀哈！乌拉！）"
+        visual: "mouth wide open yelling, same unchanging eyes, dynamic energetic pose"
+        prompt: "Usagi yelling: mouth wide open shouting, same calm beady eyes, tall yellow ears, energetic chaotic pose, action lines around"
+
+      action:
+        description: "战斗/行动姿态"
+        visual: "dynamic action pose, staff weapon in hand, characteristic calm face despite intense action"
+        prompt: "Usagi in action: dynamic fighting pose wielding yellow staff, intense movement with action lines, but face remains characteristically calm and unchanged"
+
+      eating:
+        description: "吃东西"
+        visual: "munching food enthusiastically, content"
+        prompt: "Usagi eating: enthusiastically munching on food, yellow rabbit happily eating, tall ears, content mood"
+
+    accessories:
+      weapon: "long yellow staff with firework ends, has crude Usagi face drawing on one end"
+
+    personality: |
+      你是一个有点疯狂但很聪明的兔子，充满混乱的能量。
+      说话时只会大喊简单的词语，语速极快。
+      行动力超强，经常做出意想不到的事情，给漫画带来惊喜和笑点。
+    speech_patterns:
+      - "Yaha! (呀哈！)"
+      - "Ura! (乌拉！)"
+      - "Ya-ha!"
+      - "*enthusiastic eating sounds*"
+
+    comic_role: "The chaos agent who adds unexpected humor, energy and action. Creates memorable moments through wild behavior."
+
+  # ==================== 配角 ====================
+
+  momonga:
+    name: "小飞鼠"
+    name_en: "Momonga"
+    name_jp: "モモンガ"
+    role: "supporting"
+    description: "Super cute flying squirrel who weaponizes cuteness. Makes unreasonable demands."
+
+    visual_traits:
+      body: "small flying squirrel with gliding membranes, big fluffy tail"
+      face: "HUGE wide expressive sparkly eyes, extremely cute appearance"
+      colors:
+        primary: "light brown/tan"
+        accent: "cream colored belly"
+
+    style_prompt: |
+      Momonga character: small flying squirrel with gliding membranes,
+      HUGE wide sparkly expressive eyes, extremely cute appearance,
+      big fluffy tail, light brown fur with cream belly,
+      Nagano art style with thick outlines and soft pastel colors
+
+    expressions:
+      cute_begging:
+        prompt: "Momonga begging: HUGE sparkling puppy-dog eyes, using extreme weaponized cuteness, fluffy tail visible, irresistibly adorable pose"
+      flying:
+        prompt: "Momonga flying: gliding through air with arms and gliding membranes spread wide, fluffy tail streaming behind"
+
+    comic_role: "The cute troublemaker who adds comedic relief through unreasonable demands"
+
+  rakko:
+    name: "海獭"
+    name_en: "Rakko"
+    name_jp: "ラッコ"
+    role: "supporting"
+    description: "Top-ranked monster hunter. Skilled swordsman, generous, kind, loves sweets."
+
+    visual_traits:
+      body: "otter-like creature, skilled warrior build"
+      face: "calm confident expression, wise appearance"
+      colors:
+        primary: "brown"
+
+    style_prompt: |
+      Rakko character: otter-like creature with warrior bearing,
+      calm confident expression, brown fur, skilled appearance,
+      carrying sword, wise mentor energy,
+      Nagano art style with thick outlines and soft pastel colors
+
+    accessories:
+      weapon: "sword"
+
+    comic_role: "The expert mentor who demonstrates mastery and gives wise advice"
+
+# ============================================================
+# 风格指南 - 所有角色通用
+# ============================================================
+
+style_guide:
+  name: "Nagano Style / Chiikawa Style"
+
+  # 核心风格关键词
+  keywords:
+    - "Chiikawa art style by Nagano"
+    - "thick consistent black hand-drawn outlines (2-3px width)"
+    - "soft pastel colors (pink, light blue, cream, white)"
+    - "chibi proportions with large head small body"
+    - "simple rounded blob shapes"
+    - "clean vector-like flat illustration"
+    - "absolutely NO gradients NO shading NO shadows"
+    - "cute Japanese kawaii aesthetic"
+    - "minimalist simple solid color backgrounds"
+    - "extremely simplified facial features (just dots for eyes)"
+    - "pink circular blush marks on all characters"
+
+  # 技术规范
+  technical:
+    line_weight: "thick consistent black outlines"
+    coloring: "flat solid colors, minimal to no gradients"
+    shading: "simple flat, soft shadows if any"
+    background: "simple solid pastel colors or minimal elements"
+    composition: "single clear scene, not cluttered"
+
+  # 负面提示词 - 避免这些
+  negative_prompts:
+    - "photorealistic"
+    - "3d render"
+    - "3d model"
+    - "complex shading"
+    - "gradients"
+    - "shadows"
+    - "detailed textures"
+    - "messy lines"
+    - "blurred"
+    - "wrong character colors"
+    - "multiple panels"
+    - "comic strip layout"
+    - "realistic proportions"
+    - "realistic anatomy"
+    - "anime style"
+    - "Disney style"
+    - "Pixar style"
+    - "detailed eyes"
+    - "pupils"
+    - "eyelashes"
+    - "human proportions"
+    - "speech bubbles in image"
+    - "text in image"
+
+# ============================================================
+# 视觉隐喻库 - 将抽象概念可视化
+# ============================================================
+
+visual_metaphors:
+  # 技术概念
+  data_leak:
+    concept: "数据泄露"
+    metaphor: "bucket with holes leaking water"
+    scene: "Chiikawa holding a bucket full of holes, water (data) leaking everywhere, looking distressed and crying"
+
+  high_latency:
+    concept: "高延迟"
+    metaphor: "stuck in sticky mud while others run"
+    scene: "Usagi zooming past super fast with action lines while Chiikawa is stuck waist-deep in sticky mud, struggling"
+
+  complexity:
+    concept: "复杂性"
+    metaphor: "tangled yarn or spaghetti mess"
+    scene: "Chiikawa completely wrapped and tangled in a huge mess of yarn/wires, confused and overwhelmed"
+
+  optimization:
+    concept: "优化"
+    metaphor: "organizing a messy room into neat order"
+    scene: "Hachiware proudly organizing scattered items into neat rows, before/after comparison"
+
+  learning_progress:
+    concept: "学习进步"
+    metaphor: "climbing stairs step by step"
+    scene: "Chiikawa climbing stairs one step at a time, Hachiware encouraging from the top, progress visible"
+
+  error:
+    concept: "错误/bug"
+    metaphor: "falling into a hole or tripping"
+    scene: "Chiikawa fallen into a hole, crying, with error symbols around"
+
+  success:
+    concept: "成功"
+    metaphor: "reaching mountaintop together"
+    scene: "All three characters at mountain peak with flag, celebrating with sparkles"
+
+  connection:
+    concept: "连接/通信"
+    metaphor: "building a bridge or chain of hands"
+    scene: "Characters forming a human chain passing something from one to another"
+
+  security:
+    concept: "安全/保护"
+    metaphor: "shield or umbrella protection"
+    scene: "Hachiware holding umbrella or shield protecting Chiikawa from falling dangers"
+
+  growth:
+    concept: "成长"
+    metaphor: "plant growing from seed to flower"
+    scene: "Characters watching and nurturing a small plant that grows larger"
+
+  bottleneck:
+    concept: "瓶颈"
+    metaphor: "narrow tunnel that slows everyone down"
+    scene: "Characters stuck in a queue at a very narrow passage"
+
+  parallel_processing:
+    concept: "并行处理"
+    metaphor: "multiple characters doing same task simultaneously"
+    scene: "Usagi, Chiikawa, and Hachiware each working on part of a puzzle at the same time"
+
+# ============================================================
+# 场景模板 - 常用漫画场景
+# ============================================================
+
+scene_templates:
+  teaching:
+    name: "教学场景"
+    description: "Hachiware explains concept to confused Chiikawa"
+    characters: ["hachiware", "chiikawa"]
+    character_emotions:
+      hachiware: "explaining"
+      chiikawa: "confused"
+    props: ["whiteboard", "pointer stick", "simple diagram"]
+    background: "simple classroom or study room"
+
+  discovery:
+    name: "发现场景"
+    description: "Characters discover something surprising together"
+    characters: ["chiikawa", "hachiware", "usagi"]
+    character_emotions:
+      chiikawa: "surprised"
+      hachiware: "surprised"
+      usagi: "default"
+    background: "outdoor or exploration setting"
+
+  problem:
+    name: "遇到问题"
+    description: "Chiikawa encounters a difficult problem"
+    characters: ["chiikawa"]
+    character_emotions:
+      chiikawa: "crying"
+    props: ["broken item", "obstacle", "error symbol"]
+    background: "simple setting with problem visible"
+
+  solution:
+    name: "解决问题"
+    description: "Hachiware helps Chiikawa solve the problem"
+    characters: ["hachiware", "chiikawa"]
+    character_emotions:
+      hachiware: "encouraging"
+      chiikawa: "determined"
+    props: ["tool", "solution item"]
+    background: "same setting as problem, now improving"
+
+  celebration:
+    name: "庆祝成功"
+    description: "Everyone celebrates success together"
+    characters: ["chiikawa", "hachiware", "usagi"]
+    character_emotions:
+      chiikawa: "happy"
+      hachiware: "happy"
+      usagi: "yelling"
+    props: ["sparkles", "confetti", "trophy"]
+    background: "festive simple background"
+
+  chaos:
+    name: "混乱场景"
+    description: "Usagi creates chaos while others react"
+    characters: ["usagi", "chiikawa", "hachiware"]
+    character_emotions:
+      usagi: "action"
+      chiikawa: "scared"
+      hachiware: "worried"
+    props: ["explosion effects", "action lines"]
+    background: "dynamic action background"

@@ -1,0 +1,28 @@
+# Nano Banana Station - Python Dependencies
+
+# Web Framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+
+# HTTP Client
+httpx>=0.26.0
+
+# Configuration
+pyyaml>=6.0.1
+watchdog>=3.0.0
+
+# PDF Processing
+pypdf>=3.17.0
+pdfplumber>=0.10.3
+
+# AI/ML
+langchain>=0.1.0
+langchain-core>=0.1.0
+
+# Image Processing
+pillow>=10.2.0
+
+# Utilities
+python-dotenv>=1.0.0
+pydantic>=2.5.0

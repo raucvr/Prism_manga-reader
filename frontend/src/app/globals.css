@@ -1,0 +1,128 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #FFF8E7;
+  --foreground: #4A4A4A;
+  --card: #FFFFFF;
+  --card-foreground: #4A4A4A;
+  --primary: #F8B4BF;
+  --primary-foreground: #4A4A4A;
+  --secondary: #7CD1FD;
+  --secondary-foreground: #4A4A4A;
+  --muted: #F0F0F0;
+  --muted-foreground: #888888;
+  --accent: #FFE4D6;
+  --accent-foreground: #4A4A4A;
+  --border: #E8E0F0;
+  --radius: 1rem;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: var(--font-noto), "Noto Sans SC", sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* 可爱的滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--muted);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #f48a9c;
+}
+
+/* 选中文本颜色 */
+::selection {
+  background: var(--primary);
+  color: white;
+}
+
+/* 漫画面板样式 */
+.manga-panel {
+  @apply relative rounded-2xl overflow-hidden shadow-lg transition-transform duration-300;
+}
+
+.manga-panel:hover {
+  @apply scale-[1.02];
+}
+
+/* 对话气泡 */
+.speech-bubble {
+  @apply relative bg-white rounded-3xl p-4 shadow-md;
+}
+
+.speech-bubble::after {
+  content: "";
+  @apply absolute bottom-0 left-6 w-4 h-4 bg-white;
+  transform: translateY(50%) rotate(45deg);
+}
+
+/* 动画 */
+@keyframes pop-in {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-pop-in {
+  animation: pop-in 0.3s ease-out forwards;
+}
+
+/* 加载动画 */
+@keyframes loading-dots {
+  0%, 20% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.loading-dot {
+  animation: loading-dots 1.4s infinite;
+}
+
+.loading-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loading-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}

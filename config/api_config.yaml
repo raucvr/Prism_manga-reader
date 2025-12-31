@@ -1,0 +1,35 @@
+# Prism - API Configuration
+# 核心设计：只使用 gemini-3-pro-image-preview 完成所有任务
+# 该模型内置 Chiikawa 知识，能同时处理论文分析和图像生成
+
+core_engine:
+  # 统一使用图像模型 - 它同时支持文本分析和图像生成
+  default_model: "google/gemini-3-pro-image-preview"
+  image_model: "google/gemini-3-pro-image-preview"
+
+# API Providers
+providers:
+  # OpenRouter (通过 OpenRouter 调用 Gemini 3 Pro Image)
+  openrouter:
+    enabled: true
+    api_key: "${OPENROUTER_API_KEY}"
+    base_url: "https://openrouter.ai/api/v1"
+    models:
+      - "google/gemini-3-pro-image-preview"  # 唯一需要的模型
+
+# Manga generation settings
+manga_settings:
+  default_style: "full_color_manga"
+  aspect_ratio: "2:3"
+  render_text_in_image: true  # Gemini 直接渲染文字（每次只生成一个 panel 时文字准确）
+  panels_per_page: 1  # 每次 API 调用只生成 1 个 panel，确保文字准确
+  default_theme: "chiikawa"
+  # 负面提示词 - 避免生成这些内容（不包含 text 相关，因为需要 Gemini 渲染文字）
+  negative_prompt: "photorealistic, 3d render, anime style, Disney style, complex shading, multiple panels, comic strip layout, blurry, messy lines"
+
+# Output settings
+output:
+  image_format: "png"
+  image_quality: 95
+  max_width: 1024
+  max_height: 1536
