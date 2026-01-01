@@ -33,6 +33,9 @@ class OpenRouterEngine(BaseEngine):
         base_url: str = "https://openrouter.ai/api/v1",
         model: str = "google/gemini-3-pro-preview"
     ):
+        # 检查 API key 是否设置
+        if not api_key or api_key.strip() == "" or api_key == "${OPENROUTER_API_KEY}":
+            raise ValueError("OpenRouter API key 未设置。请在 config/api_config.yaml 中设置 api_key，或设置环境变量 OPENROUTER_API_KEY")
         super().__init__(api_key, base_url, model)
         self._client: Optional[httpx.AsyncClient] = None
 

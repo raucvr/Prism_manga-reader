@@ -15,7 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from services.pdf_parser import get_parser, ParsedDocument
-from services.storyboarder import get_storyboarder, Storyboard
+from services.storyboarder import get_storyboarder, Storyboard, clear_storyboard_cache
 from services.manga_generator import get_manga_generator, GeneratedManga
 from services.progress import get_progress, set_stage, reset_progress
 
@@ -29,6 +29,15 @@ router = APIRouter()
 async def get_generation_progress():
     """Get current generation progress"""
     return get_progress().to_dict()
+
+
+# ==================== 缓存管理 ====================
+
+@router.post("/clear-cache")
+async def clear_cache():
+    """Clear the storyboard cache to force regeneration"""
+    count = clear_storyboard_cache()
+    return {"cleared": count, "message": f"Cleared {count} cached storyboards"}
 
 
 # ==================== 请求/响应模型 ====================

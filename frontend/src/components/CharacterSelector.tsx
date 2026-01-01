@@ -37,9 +37,9 @@ export function ThemeSelector() {
   const { mangaTheme, setMangaTheme } = useAppStore();
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
+    <div className="w-full max-w-xl mx-auto">
       <h3 className="text-lg font-medium mb-4 text-center">Choose Manga Style</h3>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="flex justify-center gap-4">
         {themes.map((theme) => (
           <motion.button
             key={theme.id}
@@ -47,7 +47,7 @@ export function ThemeSelector() {
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
             className={cn(
-              "relative p-4 rounded-2xl border-2 transition-all duration-200 text-left",
+              "relative p-4 rounded-2xl border-2 transition-all duration-200 text-left w-48",
               theme.color,
               mangaTheme === theme.id
                 ? "ring-2 ring-primary ring-offset-2 border-primary"

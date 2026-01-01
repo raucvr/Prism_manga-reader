@@ -120,7 +120,10 @@ class GeneratedManga:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_title = "".join(c for c in self.title if c.isalnum() or c in "_ -")[:30]
+        # 安全的文件名：保留中文字符
+        safe_title = "".join(c for c in self.title if c.isalnum() or c in "_ -" or '\u4e00' <= c <= '\u9fff')[:30]
+        if not safe_title:
+            safe_title = "manga"
         filename = f"{safe_title}_{timestamp}.png"
 
         combined = self.get_combined_image()
@@ -133,11 +136,11 @@ class GeneratedManga:
 
 class MangaGenerator:
     """
-    漫画生成器 - 简化版
+    漫画生成器 - 批量版
 
     核心策略：
     1. 利用 Gemini 内置的 Chiikawa 知识
-    2. 每次只生成一个 panel，确保文字准确
+    2. 每次生成4个 panel（2x2网格），提高效率
     3. Gemini 直接渲染对白气泡和文字
     """
 
@@ -146,6 +149,7 @@ class MangaGenerator:
         self.output_dir = Path(__file__).parent.parent.parent / "output"
         self.output_dir.mkdir(exist_ok=True)
         self.char_lib = CharacterLibrary()
+        self.panels_per_batch = 4  # 每次生成4个panel
 
     async def generate_from_storyboard(
         self,
@@ -155,38 +159,64 @@ class MangaGenerator:
         """
         根据分镜脚本生成漫画
 
-        每个 panel 单独生成，避免文字乱码
+        每次生成4个panel（2x2网格），提高效率
         """
-        print(f"[MangaGenerator] Starting: '{storyboard.title}' with {len(storyboard.panels)} panels")
+        print(f"[MangaGenerator] Starting: '{storyboard.title}' with {len(storyboard.panels)} panels (theme: {storyboard.character_theme})")
+
+        # 存储当前主题用于生成
+        self.current_theme = storyboard.character_theme
 
         # Report progress
         set_stage("generating", f"Starting manga generation")
         set_panel_progress(0, len(storyboard.panels))
 
-        # 创建进度保存目录
-        progress_dir = self.output_dir / "progress"
-        progress_dir.mkdir(exist_ok=True)
-
+        # 创建以 PDF 标题命名的子文件夹
         session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_title = "".join(c for c in storyboard.title if c.isalnum() or c in "_ -")[:20]
+        # 安全的文件夹名：保留中文字符，移除特殊字符
+        safe_title = "".join(c for c in storyboard.title if c.isalnum() or c in "_ -" or '\u4e00' <= c <= '\u9fff')[:50]
+        if not safe_title:
+            safe_title = "manga"
+
+        # 每次生成创建独立的子文件夹
+        manga_folder = self.output_dir / f"{safe_title}_{session_id}"
+        manga_folder.mkdir(parents=True, exist_ok=True)
+        progress_dir = manga_folder  # 所有文件保存在这个文件夹中
+
+        print(f"[MangaGenerator] Output folder: {manga_folder}")
 
         generated_panels = []
         failed_count = 0
 
-        # 逐个生成（关键：每次只生成一个 panel）
-        for i, panel in enumerate(storyboard.panels):
-            try:
-                print(f"[MangaGenerator] Generating panel {panel.panel_number}/{len(storyboard.panels)}...")
+        # 动态批量生成
+        total_panels = len(storyboard.panels)
+        is_cjk = storyboard.language in ["zh-CN", "ja-JP"]
 
-                result = await self._generate_panel(panel, storyboard.language)
+        # 使用动态批次大小
+        panel_index = 0
+        batch_num = 0
+
+        while panel_index < total_panels:
+            # 计算这批的最佳大小
+            batch_size = self._calculate_optimal_batch_size(
+                storyboard.panels[panel_index:panel_index + 4],
+                is_cjk
+            )
+            batch_end = min(panel_index + batch_size, total_panels)
+            batch_panels = storyboard.panels[panel_index:batch_end]
+            batch_num += 1
+
+            try:
+                print(f"[MangaGenerator] Generating batch {batch_num}: panels {panel_index+1}-{batch_end}/{total_panels} (batch_size={len(batch_panels)})...")
+
+                result = await self._generate_panel_batch(batch_panels, storyboard.language)
                 generated_panels.append(result)
 
                 # Update progress
-                set_panel_progress(len(generated_panels), len(storyboard.panels))
+                set_panel_progress(batch_end, total_panels)
 
-                # 保存单个 panel
+                # 保存批次图像
                 if save_progress and result.image_base64:
-                    panel_path = progress_dir / f"{safe_title}_{session_id}_panel{panel.panel_number:03d}.png"
+                    panel_path = progress_dir / f"{safe_title}_{session_id}_batch{batch_num:03d}.png"
                     try:
                         img_data = base64.b64decode(result.image_base64)
                         with open(panel_path, "wb") as f:
@@ -194,17 +224,21 @@ class MangaGenerator:
                     except Exception as e:
                         print(f"[MangaGenerator] Failed to save: {e}")
 
-                # 每 5 个 panel 保存一次合并图
-                if save_progress and len(generated_panels) % 5 == 0:
+                # 每 3 个批次保存一次合并图
+                if save_progress and len(generated_panels) % 3 == 0:
                     await self._save_partial_manga(
                         storyboard, generated_panels, progress_dir, safe_title, session_id
                     )
 
             except Exception as e:
                 failed_count += 1
-                print(f"[MangaGenerator] Panel {panel.panel_number} failed: {e}")
+                print(f"[MangaGenerator] Batch {batch_num} failed: {e}")
                 # 创建占位符
-                generated_panels.append(self._create_placeholder_panel(panel, 1024, 1228))
+                width, height = self._get_batch_dimensions(len(batch_panels))
+                generated_panels.append(self._create_placeholder_batch(batch_panels, width, height))
+
+            # 更新索引到下一批
+            panel_index = batch_end
 
         # 保存最终结果
         if save_progress and generated_panels:
@@ -212,10 +246,10 @@ class MangaGenerator:
                 storyboard, generated_panels, progress_dir, safe_title, session_id, is_final=True
             )
 
-        print(f"[MangaGenerator] Completed: {len(generated_panels)} panels, {failed_count} failed")
+        print(f"[MangaGenerator] Completed: {batch_num} batches ({total_panels} panels), {failed_count} failed")
 
         # Mark as completed
-        set_stage("completed", f"Generated {len(generated_panels)} panels")
+        set_stage("completed", f"Generated {total_panels} panels in {len(generated_panels)} batches")
 
         return GeneratedManga(
             title=storyboard.title,
@@ -228,14 +262,17 @@ class MangaGenerator:
         """
         生成单个漫画格
 
-        使用简化的 prompt，让 Gemini 使用内置的 Chiikawa 知识
+        使用简化的 prompt，让 Gemini 使用内置知识
         包含重试逻辑以处理网络错误
         """
         client = await get_client()
         output_settings = self.config.output_settings
 
+        # 获取当前主题
+        theme = getattr(self, 'current_theme', 'chiikawa')
+
         # 简化的 prompt - 利用 Gemini 内置知识
-        prompt = self._build_simple_prompt(panel, language)
+        prompt = self._build_simple_prompt(panel, language, theme)
 
         width, height = self._get_panel_dimensions(
             panel.layout_hint,
@@ -293,44 +330,289 @@ class MangaGenerator:
         print(f"[MangaGenerator] All {max_retries} attempts failed for panel {panel.panel_number}")
         return self._create_placeholder_panel(panel, width, height)
 
-    def _build_simple_prompt(self, panel: Panel, language: str) -> str:
+    async def _generate_panel_batch(self, panels: List[Panel], language: str, max_retries: int = 3) -> GeneratedPanel:
         """
-        构建简化的图像生成 prompt
+        批量生成多个漫画格
 
-        关键：让 Gemini 使用它内置的 Chiikawa 知识
+        根据面板数量使用不同布局：
+        - 1 panel: 单张图 1024x1024
+        - 2 panels: 横向排列 2048x1024
+        - 3-4 panels: 2x2网格 2048x2048
+        """
+        client = await get_client()
+        output_settings = self.config.output_settings
+
+        # 获取当前主题
+        theme = getattr(self, 'current_theme', 'chiikawa')
+
+        # 根据面板数量确定尺寸
+        width, height = self._get_batch_dimensions(len(panels))
+
+        # 构建批量 prompt
+        prompt = self._build_batch_prompt(panels, language, theme)
+
+        negative_prompt = getattr(self.config.manga_settings, 'negative_prompt', None)
+        if not negative_prompt:
+            negative_prompt = "photorealistic, 3d render, anime style, complex shading, blurry, messy lines"
+
+        config = ImageGenerationConfig(
+            width=width,
+            height=height,
+            style=self.config.manga_settings.default_style,
+            negative_prompt=negative_prompt
+        )
+
+        # 加载参考图片
+        reference_images = []
+        for panel in panels[:1]:  # 只用第一个panel的参考图
+            reference_images.extend(self._load_reference_images(panel))
+        if reference_images:
+            print(f"[MangaGenerator] Using {len(reference_images)} reference images")
+
+        # 带重试的生成逻辑
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                response = await client.generate_image(prompt, config, reference_images=reference_images)
+
+                if response.images:
+                    image = response.images[0]
+                    print(f"[MangaGenerator] Batch generated ({len(panels)} panels)")
+                    return GeneratedPanel(
+                        panel_number=panels[0].panel_number,
+                        image_base64=image.data,
+                        mime_type=image.mime_type,
+                        dialogue={},  # 批量模式不单独存储对白
+                        characters=[],
+                        width=width,
+                        height=height
+                    )
+
+            except Exception as e:
+                last_error = e
+                retry_msg = f" (attempt {attempt + 1}/{max_retries})" if attempt < max_retries - 1 else ""
+                print(f"[MangaGenerator] Batch generation failed{retry_msg}: {e}")
+
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt
+                    print(f"[MangaGenerator] Retrying in {wait_time}s...")
+                    await asyncio.sleep(wait_time)
+
+        print(f"[MangaGenerator] All {max_retries} attempts failed for batch")
+        return self._create_placeholder_batch(panels, width, height)
+
+    def _calculate_optimal_batch_size(self, panels: List[Panel], is_cjk: bool) -> int:
+        """
+        根据面板文本长度动态计算最佳批次大小
+
+        CJK 文本较长时减少每批面板数量，以保证文字清晰度
+        """
+        if not panels:
+            return 1
+
+        # 计算所有面板中最长的单个对白
+        max_single_dialogue = 0
+
+        for panel in panels:
+            if panel.dialogue:
+                for char, text in panel.dialogue.items():
+                    max_single_dialogue = max(max_single_dialogue, len(text))
+
+        # CJK 语言的阈值（宽松版）
+        if is_cjk:
+            # 如果单个对白超过 200 字，只生成 1 个面板
+            if max_single_dialogue > 200:
+                return 1
+            # 如果单个对白超过 100 字，只生成 2 个面板
+            elif max_single_dialogue > 100:
+                return min(2, len(panels))
+            # 否则生成 4 个面板
+            else:
+                return min(4, len(panels))
+        else:
+            # 英文：无限制，始终 4 个面板
+            return min(4, len(panels))
+
+    def _get_batch_dimensions(self, batch_size: int) -> tuple:
+        """
+        根据批次大小返回图像尺寸
+
+        - 1 panel: 1024x1024
+        - 2 panels: 2048x1024 (横向排列)
+        - 3-4 panels: 2048x2048 (2x2网格)
+        """
+        if batch_size == 1:
+            return (1024, 1024)
+        elif batch_size == 2:
+            return (2048, 1024)
+        else:
+            return (2048, 2048)
+
+    def _build_batch_prompt(self, panels: List[Panel], language: str, theme: str = "chiikawa") -> str:
+        """
+        构建批量图像生成 prompt
+
+        根据面板数量使用不同布局：
+        - 1 panel: 单张图
+        - 2 panels: 横向排列 (1x2)
+        - 3-4 panels: 2x2网格
         """
         lang_map = {"zh-CN": "中文", "en-US": "English", "ja-JP": "日本語"}
         lang_name = lang_map.get(language, "中文")
+        is_cjk = language in ["zh-CN", "ja-JP"]
+        num_panels = len(panels)
 
-        # 构建对白部分
-        dialogue_text = ""
+        # 根据面板数量选择布局和位置标签
+        if num_panels == 1:
+            layout_desc = "single manga panel"
+            positions = [""]
+        elif num_panels == 2:
+            layout_desc = "1x2 horizontal manga layout"
+            positions = ["Left", "Right"]
+        else:
+            layout_desc = "2x2 manga grid"
+            positions = ["Top-Left", "Top-Right", "Bottom-Left", "Bottom-Right"]
+
+        # 构建面板描述 - 不截断文字
+        panel_lines = []
+        for i, panel in enumerate(panels):
+            pos = positions[i] if i < len(positions) else f"Panel {i+1}"
+            chars = ", ".join(panel.characters) if panel.characters else ""
+
+            # 完整对白，不截断
+            dialogues = []
+            if panel.dialogue:
+                for char, text in panel.dialogue.items():
+                    dialogues.append(f'{char}: "{text}"')
+            dialogue_str = " | ".join(dialogues) if dialogues else ""
+
+            if pos:
+                panel_lines.append(f"{pos}: {chars} - {dialogue_str}")
+            else:
+                panel_lines.append(f"Characters: {chars}\nDialogue: {dialogue_str}")
+
+        panels_text = "\n".join(panel_lines)
+
+        # 简洁的风格描述
+        if theme == "ghibli":
+            style = "Ghibli (Spirited Away style, Haku in HUMAN form only)"
+        else:
+            style = "Chiikawa (Nagano style)"
+
+        # 根据面板数量和语言调整文字说明
+        if num_panels == 1:
+            if is_cjk:
+                text_note = f"Text: Render {lang_name} dialogue in speech bubbles. Use LARGE, CLEAR font. Make text easily readable."
+            else:
+                text_note = f"Text: Clear speech bubbles in {lang_name}. Render text CLEARLY."
+        else:
+            if is_cjk:
+                text_note = f"Text: {lang_name} dialogue in speech bubbles. Use LARGE, CLEAR font for readability."
+            else:
+                text_note = f"Text: Clear speech bubbles in {lang_name}. Render text LEGIBLY."
+
+        # 根据布局生成不同的 prompt
+        if num_panels == 1:
+            prompt = f"""{layout_desc}, {style}.
+
+Audience: Nobel Prize scholars who LOVE {style.split()[0]} characters.
+Balance: Academic rigor + cute charm.
+
+{panels_text}
+
+Background: Simple classroom/lab.
+{text_note}"""
+        else:
+            prompt = f"""{layout_desc}, {style}.
+
+Audience: Nobel Prize scholars who LOVE {style.split()[0]} characters.
+Balance: Academic rigor + cute charm.
+
+Background: Simple classroom/lab (CONSISTENT across all panels!)
+{text_note}
+
+Panels:
+{panels_text}
+
+Generate {layout_desc} with black borders between panels."""
+
+        return prompt
+
+    def _create_placeholder_batch(self, panels: List[Panel], width: int, height: int) -> GeneratedPanel:
+        """创建批量占位符，支持不同布局"""
+        img = Image.new("RGB", (width, height), "#f5f5f5")
+        draw = ImageDraw.Draw(img)
+        num_panels = len(panels)
+
+        draw.rectangle([5, 5, width-5, height-5], outline="#cccccc", width=2)
+
+        if num_panels == 1:
+            # 单张图
+            positions = [(width // 2, height // 2)]
+        elif num_panels == 2:
+            # 横向排列
+            mid_x = width // 2
+            draw.line([(mid_x, 0), (mid_x, height)], fill="#cccccc", width=2)
+            positions = [(mid_x // 2, height // 2), (mid_x + mid_x // 2, height // 2)]
+        else:
+            # 2x2网格
+            mid_x, mid_y = width // 2, height // 2
+            draw.line([(mid_x, 0), (mid_x, height)], fill="#cccccc", width=2)
+            draw.line([(0, mid_y), (width, mid_y)], fill="#cccccc", width=2)
+            positions = [(mid_x//2, mid_y//2), (mid_x + mid_x//2, mid_y//2),
+                         (mid_x//2, mid_y + mid_y//2), (mid_x + mid_x//2, mid_y + mid_y//2)]
+
+        for i, panel in enumerate(panels):
+            if i < len(positions):
+                x, y = positions[i]
+                text = f"Panel {panel.panel_number}"
+                draw.text((x, y), text, fill="#999999", anchor="mm")
+
+        buffer = io.BytesIO()
+        img.save(buffer, format="PNG")
+        img_base64 = base64.b64encode(buffer.getvalue()).decode()
+
+        return GeneratedPanel(
+            panel_number=panels[0].panel_number if panels else 0,
+            image_base64=img_base64,
+            dialogue={},
+            characters=[],
+            width=width,
+            height=height
+        )
+
+    def _build_simple_prompt(self, panel: Panel, language: str, theme: str = "chiikawa") -> str:
+        """
+        构建简化的图像生成 prompt（单个panel，备用）
+        简洁版 - 现代模型足够聪明
+        """
+        lang_map = {"zh-CN": "中文", "en-US": "English", "ja-JP": "日本語"}
+        lang_name = lang_map.get(language, "中文")
+        is_cjk = language in ["zh-CN", "ja-JP"]
+
+        # 对白 - 不截断，完整输出
+        dialogues = []
         if panel.dialogue:
-            dialogue_lines = []
             for char, text in panel.dialogue.items():
-                dialogue_lines.append(f"- {char}: \"{text}\"")
-            dialogue_text = "\n".join(dialogue_lines)
+                dialogues.append(f'{char}: "{text}"')
+        dialogue_str = " | ".join(dialogues) if dialogues else "(no dialogue)"
 
-        # 构建角色列表
-        chars = ", ".join(panel.characters) if panel.characters else "Chiikawa and Hachiware"
+        chars = ", ".join(panel.characters) if panel.characters else ""
+        style = "Ghibli (Haku in HUMAN form)" if theme == "ghibli" else "Chiikawa"
 
-        prompt = f"""生成一幅 Chiikawa (ちいかわ) 风格的漫画单格。
+        # CJK 语言强调文字清晰
+        if is_cjk:
+            text_note = f"Render {lang_name} text LARGE and CLEAR in speech bubbles."
+        else:
+            text_note = "Render text CLEARLY in speech bubbles."
 
-## 场景
-{panel.visual_description}
+        prompt = f"""Single manga panel, {style} style.
 
-## 角色
-{chars}
+Characters: {chars}
+Dialogue ({lang_name}): {dialogue_str}
+Background: Simple classroom/lab.
 
-## 对白（请在图中用气泡渲染，语言：{lang_name}）
-{dialogue_text if dialogue_text else "无对白"}
-
-## 风格要求
-- Nagano/Chiikawa 官方画风
-- 粗黑线条、柔和粉彩色
-- 简单圆润的角色造型
-- 清晰易读的对白气泡
-
-生成单幅漫画图像，包含角色和对白气泡。"""
+{text_note}"""
 
         return prompt
 

@@ -25,7 +25,7 @@ const steps: StepInfo[] = [
     stage: "generating-storyboard",
     icon: <Wand2 className="w-5 h-5" />,
     title: "Storyboard",
-    description: "AI is creating the manga script...",
+    description: "Prism is creating the manga script...",
   },
   {
     stage: "generating-manga",
@@ -47,6 +47,9 @@ export function GenerationProgress() {
 
   const currentStepIndex = steps.findIndex((s) => s.stage === stage);
   const isGenerating = ["parsing", "generating-storyboard", "generating-manga"].includes(stage);
+
+  // Debug logging
+  console.log("[GenerationProgress] Rendering:", { stage, currentStepIndex, isGenerating });
 
   // Poll progress when generating manga
   useEffect(() => {
@@ -156,7 +159,7 @@ export function GenerationProgress() {
         )}
 
         {/* Storyboard preview */}
-        {stage === "generating-manga" && storyboard && (
+        {stage === "generating-manga" && storyboard && Array.isArray(storyboard.panels) && storyboard.panels.length > 0 && (
           <div className="mt-6 p-4 bg-white rounded-2xl shadow-sm">
             <p className="text-sm text-muted-foreground mb-2">Storyboard Preview</p>
             <div className="flex flex-wrap justify-center gap-2">
@@ -168,7 +171,7 @@ export function GenerationProgress() {
                   transition={{ delay: i * 0.1 }}
                   className="w-16 h-20 bg-gray-100 rounded-lg flex items-center justify-center text-xs text-gray-400"
                 >
-                  {panel.panel_type === "title" ? "📖" : "🎨"}
+                  {panel?.panel_type === "title" ? "📖" : "🎨"}
                 </motion.div>
               ))}
             </div>

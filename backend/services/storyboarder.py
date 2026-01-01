@@ -148,16 +148,17 @@ class Storyboarder:
         language: str = "zh-CN"
     ) -> Storyboard:
         """
-        从论文生成分镜脚本
+        从论文生成分镜脚本 - 三步流程
 
-        使用 Gemini 3 Pro Image 分析论文，生成分镜描述
-        模型内置 Chiikawa 知识，会自动使用合适的角色和风格
+        Step 1: 生成英文技术解读
+        Step 2: 用英文生成高质量漫画分镜
+        Step 3: 翻译对白到目标语言（如果不是英文）
         """
         import hashlib
         global _storyboard_cache
 
-        # Check cache first
-        cache_key = hashlib.md5(f"{text[:5000]}:{title}:{language}:{self.character_theme}".encode()).hexdigest()
+        # Check cache first (include CACHE_VERSION to invalidate old entries)
+        cache_key = hashlib.md5(f"v{CACHE_VERSION}:{text[:5000]}:{title}:{language}:{self.character_theme}".encode()).hexdigest()
         if cache_key in _storyboard_cache:
             cached = _storyboard_cache[cache_key]
             print(f"[Storyboarder] Using cached storyboard ({len(cached.panels)} panels)")
@@ -165,14 +166,111 @@ class Storyboarder:
 
         client = await get_client()
 
-        print(f"[Storyboarder] Analyzing paper ({len(text)} chars)...")
+        # ========== Step 1: 生成英文技术解读 ==========
+        print(f"[Storyboarder] Step 1: Generating technical analysis ({len(text)} chars)...")
 
-        # 简化的 prompt - 利用 Gemini 内置知识
-        prompt = self._build_storyboard_prompt(text, title, language)
+        analysis_prompt = self._build_analysis_prompt(text, title)
+
+        config = GenerationConfig(
+            temperature=0.3,  # 低温度确保准确性
+            max_tokens=32000  # 足够生成完整技术分析
+        )
+
+        analysis_response = await client.generate_text(
+            prompt=analysis_prompt,
+            config=config
+        )
+
+        technical_analysis = analysis_response.content
+        print(f"[Storyboarder] Technical analysis generated ({len(technical_analysis)} chars)")
+
+        # ========== Step 2: 用英文生成高质量漫画分镜 ==========
+        print(f"[Storyboarder] Step 2: Generating manga storyboard (in English for quality)...")
+
+        # 始终用英文生成分镜，确保最高质量
+        storyboard_prompt = self._build_storyboard_prompt(technical_analysis, title, "en-US")
 
         config = GenerationConfig(
             temperature=0.7,
-            max_tokens=16000  # 足够生成 100 个分镜的 JSON
+            max_tokens=32000  # 足够生成 100+ 个分镜
+        )
+
+        response = await client.generate_text(
+            prompt=storyboard_prompt,
+            config=config
+        )
+
+        # 解析响应（暂时设为英文）
+        storyboard = self._parse_response(response.content, title, text, "en-US")
+
+        print(f"[Storyboarder] Generated {len(storyboard.panels)} panels in English")
+
+        # ========== Step 3: 翻译对白到目标语言 ==========
+        if language != "en-US":
+            print(f"[Storyboarder] Step 3: Translating dialogues to {language}...")
+            storyboard = await self._translate_storyboard(storyboard, language, client, technical_analysis)
+            print(f"[Storyboarder] Translation completed")
+
+        storyboard.language = language
+
+        # Cache the result
+        _storyboard_cache[cache_key] = storyboard
+
+        return storyboard
+
+    async def _translate_storyboard(
+        self,
+        storyboard: Storyboard,
+        target_language: str,
+        client,
+        technical_analysis: str = ""
+    ) -> Storyboard:
+        """
+        翻译分镜对白到目标语言
+        包含技术分析作为上下文，确保专业术语翻译准确
+        """
+        lang_map = {"zh-CN": "Simplified Chinese", "ja-JP": "Japanese"}
+        target_lang_name = lang_map.get(target_language, target_language)
+
+        # 收集所有对白
+        all_dialogues = []
+        for panel in storyboard.panels:
+            for char, text in panel.dialogue.items():
+                all_dialogues.append(f"{panel.panel_number}|{char}|{text}")
+
+        if not all_dialogues:
+            return storyboard
+
+        # 批量翻译
+        dialogues_text = "\n".join(all_dialogues)
+
+        # 包含技术分析摘要作为上下文
+        context_summary = technical_analysis[:8000] if technical_analysis else ""
+
+        prompt = f"""You are translating manga dialogues about a scientific paper to {target_lang_name}.
+
+# CONTEXT (Technical Analysis of the Paper)
+{context_summary}
+
+# TRANSLATION RULES
+- This is a manga explaining an ACADEMIC PAPER - preserve ALL technical terms accurately
+- Translate naturally in conversational {target_lang_name}
+- Keep exact numbers, formulas, method names (e.g., "Amber ff14SB", "hazard ratio 0.73")
+- DO NOT add explanations or notes
+- Output ONLY the translations in the same format
+
+# FORMAT
+Input: panel_number|character|dialogue
+Output: panel_number|character|translated_dialogue
+
+# DIALOGUES TO TRANSLATE
+{dialogues_text}
+
+# OUTPUT (translations only):"""
+
+        config = GenerationConfig(
+            temperature=0.3,
+            max_tokens=32000  # 足够翻译所有对话
         )
 
         response = await client.generate_text(
@@ -180,63 +278,178 @@ class Storyboarder:
             config=config
         )
 
-        # 解析响应
-        storyboard = self._parse_response(response.content, title, text, language)
+        print(f"[Storyboarder] Translation response length: {len(response.content)} chars")
 
-        print(f"[Storyboarder] Generated {len(storyboard.panels)} panels")
+        # 解析翻译结果
+        translated_map = {}
+        for line in response.content.strip().split("\n"):
+            line = line.strip()
+            if not line or "|" not in line:
+                continue
+            parts = line.split("|", 2)
+            if len(parts) >= 3:
+                try:
+                    panel_num = int(parts[0])
+                    char = parts[1].strip().lower()
+                    translated = parts[2].strip()
+                    if panel_num not in translated_map:
+                        translated_map[panel_num] = {}
+                    translated_map[panel_num][char] = translated
+                except ValueError:
+                    continue
 
-        # Cache the result
-        _storyboard_cache[cache_key] = storyboard
+        print(f"[Storyboarder] Parsed {len(translated_map)} panels from translation")
+
+        # 应用翻译 - 使用大小写不敏感匹配
+        applied_count = 0
+        for panel in storyboard.panels:
+            if panel.panel_number in translated_map:
+                # 创建小写 key 的映射
+                dialogue_lower_map = {k.lower(): k for k in panel.dialogue.keys()}
+                for char, translated in translated_map[panel.panel_number].items():
+                    # 使用小写匹配
+                    if char in dialogue_lower_map:
+                        original_key = dialogue_lower_map[char]
+                        panel.dialogue[original_key] = translated
+                        applied_count += 1
+
+        print(f"[Storyboarder] Applied {applied_count} translations")
 
         return storyboard
 
-    def _build_storyboard_prompt(self, text: str, title: str, language: str) -> str:
+    def _build_analysis_prompt(self, text: str, title: str) -> str:
         """
-        构建分镜生成 prompt
-
-        使用简单的自然语言格式，避免复杂 JSON 解析问题
+        构建技术解读 prompt - 生成详细的英文技术分析
         """
-        lang_map = {"zh-CN": "中文", "en-US": "English", "ja-JP": "日本語"}
-        lang_name = lang_map.get(language, "中文")
-
-        dialogue_lang = "Chinese" if language == "zh-CN" else ("Japanese" if language == "ja-JP" else "English")
-
-        return f"""Convert this academic paper into a Chiikawa-style educational manga storyboard.
+        return f"""You are a senior academic reviewer. Analyze this paper and produce a COMPREHENSIVE technical breakdown in English.
 
 # Paper Content
-{text[:100000]}
+{text[:80000]}
 
-# Requirements
+# Required Analysis Structure
 
-1. **Characters**: Hachiware (teacher), Chiikawa (student), Usagi (occasional comic relief)
+## 1. Core Innovation & Research Question
+- What is the main problem being addressed?
+- What is novel about this approach?
+- How does it differ from existing methods?
 
-2. **Panel count**: Generate 20-80 panels based on paper complexity, covering ALL important content
+## 2. Methodology Deep Dive
+- Detailed step-by-step technical workflow
+- Key algorithms, equations, and formulas (COPY EXACTLY as written in paper)
+- Data sources, sample sizes, and experimental setup
+- Parameter choices and their justifications
 
-3. **Order**: Follow the paper's logical sequence strictly, do NOT skip any middle sections
+## 3. Quantitative Results
+- ALL numerical results with EXACT values (e.g., "r = 0.82", not "high correlation")
+- Statistical metrics (p-values, confidence intervals, effect sizes, correlation coefficients)
+- Comparison with baselines/prior work
+- Performance across different conditions/datasets
 
-4. **Language**: Dialogue in {dialogue_lang}, scene descriptions in English
+## 4. Technical Implementation Details
+- Software/hardware used (EXACT names: "Amber ff14SB", "TIP3P", etc.)
+- Force fields, water models, simulation parameters
+- Hyperparameters and their EXACT values
+- Training procedures (if applicable)
+- Computational requirements
 
-# Output Format
+## 5. Mathematical Formulas
+- Write out ALL key equations EXACTLY as they appear in the paper
+- Include variable definitions
+- Do NOT paraphrase or simplify formulas
 
-Separate each panel with ===, format as follows:
+## 6. Key Insights & Interpretations
+- What do the results mean mechanistically?
+- Surprising or counterintuitive findings
+- Key design decisions explained (e.g., "LDE excludes ligand information because...")
 
-===
+## 7. Limitations & Future Directions
+- Acknowledged limitations
+- Assumptions made
+- Open questions for future research
+
+## 8. Critical Evaluation
+- Strengths of the methodology
+- Potential weaknesses or concerns
+- Alternative approaches that could be considered
+
+⚠️ CRITICAL INSTRUCTIONS:
+- COPY all numbers, equations, and technical terms EXACTLY from the paper
+- Do NOT substitute terms (e.g., if paper says "MDS", don't say "UMAP")
+- Do NOT round or approximate values
+- Do NOT simplify equations
+- Include EXACT software/tool names as written
+- This analysis will be used to create an academic manga - any error will be immediately noticed by expert readers
+
+Output the complete technical analysis in English."""
+
+    def _build_storyboard_prompt(self, text: str, title: str, language: str) -> str:
+        """
+        构建分镜生成 prompt（始终用英文生成，后续翻译）
+
+        使用简单的自然语言格式，避免复杂 JSON 解析问题
+        支持不同主题：chiikawa, ghibli
+        """
+        # 根据主题选择不同的角色和风格
+        if self.character_theme == "ghibli":
+            style_name = "Studio Ghibli"
+            characters_desc = "Haku (wise mentor/senior researcher), Chihiro (curious student), Calcifer (witty fire spirit who adds humor)"
+            example_dialogue = """===
 Panel 1
-Characters: hachiware, chiikawa
-Scene: Hachiware holding a book, Chiikawa looking curious, in a cozy study room
+Characters: haku, chihiro
+Scene: Haku and Chihiro in a magical library with floating books, soft watercolor lighting
 Dialogue:
-- hachiware: "Let's learn something interesting today!"
-- chiikawa: "Huh...? What is it?"
+- haku: "This study uses a randomized controlled trial with n=2,847 participants..."
+- chihiro: "What was the stratification criteria?"
 ===
 Panel 2
-Characters: hachiware, chiikawa
-Scene: Hachiware pointing at a whiteboard with diagrams, Chiikawa listening attentively
+Characters: haku, chihiro, calcifer
+Scene: All three examining a glowing diagram projected in the air
 Dialogue:
-- hachiware: "This paper is about..."
-- chiikawa: "Hmm..."
+- haku: "The primary endpoint showed a hazard ratio of 0.73 (95% CI: 0.61-0.87)..."
+- calcifer: "Hmph! But what about the selection bias in the control group?"
+==="""
+        else:  # chiikawa (default)
+            style_name = "Chiikawa"
+            characters_desc = "Hachiware (senior researcher/professor), Chiikawa (curious PhD student), Usagi (the skeptic who asks tough questions)"
+            example_dialogue = """===
+Panel 1
+Characters: hachiware, chiikawa
+Scene: Hachiware holding the paper, pointing at a specific figure, in a research lab
+Dialogue:
+- hachiware: "This study uses a randomized controlled trial with n=2,847 participants..."
+- chiikawa: "What was the stratification criteria?"
 ===
+Panel 2
+Characters: hachiware, chiikawa, usagi
+Scene: All three examining a complex diagram on a whiteboard
+Dialogue:
+- hachiware: "The primary endpoint showed a hazard ratio of 0.73 (95% CI: 0.61-0.87)..."
+- usagi: "But what about the selection bias in the control group?"
+==="""
 
-Output all panels in this format. Ensure complete coverage of the paper content."""
+        return f"""Create a {style_name}-style manga explaining this paper.
+
+# Technical Analysis
+{text[:100000]}
+
+# Key Points
+- Readers: Nobel Prize-level scholars who LOVE {style_name} style
+- Balance: Academic rigor + {style_name} charm
+- ONLY use facts from the analysis above - NO hallucination
+- Copy exact numbers, formulas, method names (e.g., "Amber ff14SB" not "CHARMM36m")
+- Keep each dialogue SHORT and punchy (1-2 sentences max)
+
+# Characters
+{characters_desc}
+
+# Format
+- 40-100 panels, dialogue in English
+- Background: simple classroom/lab (keep consistent!)
+- Use === to separate panels:
+
+{example_dialogue}
+
+Generate all panels."""
 
     def _fix_json(self, json_str: str) -> str:
         """尝试修复常见的 JSON 格式错误"""
@@ -404,10 +617,10 @@ Output all panels in this format. Ensure complete coverage of the paper content.
                     panel_number=panel_number,
                     panel_type=PanelType.EXPLANATION,
                     visual_description=visual_description,
-                    characters=characters or ["chiikawa", "hachiware"],
+                    characters=characters or self._get_default_characters(),
                     character_emotions={},
                     dialogue=dialogue,
-                    background="pastel background"
+                    background="simple classroom"
                 )
                 panels.append(panel)
 
@@ -423,17 +636,23 @@ Output all panels in this format. Ensure complete coverage of the paper content.
                 panel_number=p.get("panel_number", default_num),
                 panel_type=panel_type,
                 visual_description=p.get("visual_description", ""),
-                characters=p.get("characters", ["chiikawa", "hachiware"]),
+                characters=p.get("characters", self._get_default_characters()),
                 character_emotions=p.get("character_emotions", {}),
                 dialogue=p.get("dialogue", {}),
                 visual_metaphor=p.get("visual_metaphor", ""),
                 props=p.get("props", []),
-                background=p.get("background", "simple pastel background"),
+                background=p.get("background", "simple classroom"),
                 layout_hint=p.get("layout_hint", "normal")
             )
         except Exception as e:
             print(f"[Storyboarder] Panel parse error: {e}")
             return None
+
+    def _get_default_characters(self) -> list:
+        """根据主题返回默认角色列表"""
+        if self.character_theme == "ghibli":
+            return ["haku", "chihiro"]
+        return ["chiikawa", "hachiware"]
 
     def _create_fallback_storyboard(
         self,
@@ -441,36 +660,68 @@ Output all panels in this format. Ensure complete coverage of the paper content.
         source_text: str,
         language: str
     ) -> Storyboard:
-        """创建备用分镜（解析失败时）"""
-        panels = [
-            Panel(
-                panel_number=1,
-                panel_type=PanelType.TITLE,
-                visual_description="Hachiware holding a book, Chiikawa looking curious",
-                characters=["hachiware", "chiikawa"],
-                character_emotions={"hachiware": "explaining", "chiikawa": "confused"},
-                dialogue={"hachiware": "今天来学习一个有趣的话题！", "chiikawa": "诶...？"},
-                background="simple study room"
-            ),
-            Panel(
-                panel_number=2,
-                panel_type=PanelType.EXPLANATION,
-                visual_description="Hachiware at whiteboard, Chiikawa listening",
-                characters=["hachiware", "chiikawa"],
-                character_emotions={"hachiware": "explaining", "chiikawa": "thinking"},
-                dialogue={"hachiware": "让我来解释一下～", "chiikawa": "嗯嗯..."},
-                background="classroom"
-            ),
-            Panel(
-                panel_number=3,
-                panel_type=PanelType.CONCLUSION,
-                visual_description="All three characters celebrating together",
-                characters=["chiikawa", "hachiware", "usagi"],
-                character_emotions={"chiikawa": "happy", "hachiware": "happy", "usagi": "yelling"},
-                dialogue={"chiikawa": "原来如此！", "hachiware": "做得好！", "usagi": "呀哈！"},
-                background="festive background with sparkles"
-            )
-        ]
+        """创建备用分镜（解析失败时）- 根据主题使用对应角色"""
+        # 根据主题选择角色和对白
+        if self.character_theme == "ghibli":
+            panels = [
+                Panel(
+                    panel_number=1,
+                    panel_type=PanelType.TITLE,
+                    visual_description="Haku holding a scroll, Chihiro looking curious, in a magical library",
+                    characters=["haku", "chihiro"],
+                    character_emotions={"haku": "explaining", "chihiro": "curious"},
+                    dialogue={"haku": "今天来学习一个有趣的话题！", "chihiro": "是什么呢？"},
+                    background="magical library with floating books"
+                ),
+                Panel(
+                    panel_number=2,
+                    panel_type=PanelType.EXPLANATION,
+                    visual_description="Haku explaining with a glowing diagram, Chihiro and Calcifer listening",
+                    characters=["haku", "chihiro", "calcifer"],
+                    character_emotions={"haku": "explaining", "chihiro": "thinking", "calcifer": "default"},
+                    dialogue={"haku": "让我来解释一下～", "calcifer": "这个很有意思..."},
+                    background="classroom with warm lighting"
+                ),
+                Panel(
+                    panel_number=3,
+                    panel_type=PanelType.CONCLUSION,
+                    visual_description="All three characters happy together",
+                    characters=["haku", "chihiro", "calcifer"],
+                    character_emotions={"haku": "happy", "chihiro": "happy", "calcifer": "excited"},
+                    dialogue={"chihiro": "原来如此！", "haku": "做得好！", "calcifer": "哼，我早就知道了！"},
+                    background="sunny classroom"
+                )
+            ]
+        else:  # chiikawa (default)
+            panels = [
+                Panel(
+                    panel_number=1,
+                    panel_type=PanelType.TITLE,
+                    visual_description="Hachiware holding a book, Chiikawa looking curious",
+                    characters=["hachiware", "chiikawa"],
+                    character_emotions={"hachiware": "explaining", "chiikawa": "confused"},
+                    dialogue={"hachiware": "今天来学习一个有趣的话题！", "chiikawa": "诶...？"},
+                    background="simple study room"
+                ),
+                Panel(
+                    panel_number=2,
+                    panel_type=PanelType.EXPLANATION,
+                    visual_description="Hachiware at whiteboard, Chiikawa listening",
+                    characters=["hachiware", "chiikawa"],
+                    character_emotions={"hachiware": "explaining", "chiikawa": "thinking"},
+                    dialogue={"hachiware": "让我来解释一下～", "chiikawa": "嗯嗯..."},
+                    background="classroom"
+                ),
+                Panel(
+                    panel_number=3,
+                    panel_type=PanelType.CONCLUSION,
+                    visual_description="All three characters celebrating together",
+                    characters=["chiikawa", "hachiware", "usagi"],
+                    character_emotions={"chiikawa": "happy", "hachiware": "happy", "usagi": "yelling"},
+                    dialogue={"chiikawa": "原来如此！", "hachiware": "做得好！", "usagi": "呀哈！"},
+                    background="festive background with sparkles"
+                )
+            ]
 
         return Storyboard(
             title=title or "学习笔记",
@@ -551,8 +802,22 @@ class CharacterLibrary:
 # 全局实例
 _storyboarder: Optional[Storyboarder] = None
 
+# Cache version - increment this to invalidate all cached storyboards
+# v2: Added translation context fix for zh-CN
+# v3: Removed 25-char truncation limit for CJK
+CACHE_VERSION = 3
+
 # Simple storyboard cache (text hash -> storyboard)
 _storyboard_cache: Dict[str, Storyboard] = {}
+
+
+def clear_storyboard_cache() -> int:
+    """Clear the storyboard cache. Returns the number of entries cleared."""
+    global _storyboard_cache
+    count = len(_storyboard_cache)
+    _storyboard_cache = {}
+    print(f"[Storyboarder] Cleared {count} cached storyboards")
+    return count
 
 
 def get_storyboarder(character_theme: str = None) -> Storyboarder:

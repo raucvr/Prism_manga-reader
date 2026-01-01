@@ -113,6 +113,9 @@ export function SettingsPanel() {
                         </button>
                       ))}
                     </div>
+                    <p className="text-xs text-muted-foreground mt-3 text-center">
+                      💡 English produces better results and costs less
+                    </p>
                   </CardContent>
                 </Card>
 

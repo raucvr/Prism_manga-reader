@@ -8,12 +8,12 @@ Write-Host ""
 # Kill processes on port 8000 (backend)
 $backendProcesses = Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique
 if ($backendProcesses) {
-    foreach ($pid in $backendProcesses) {
+    foreach ($procId in $backendProcesses) {
         try {
-            Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
-            Write-Host "  [OK] Stopped backend process (PID: $pid)" -ForegroundColor Green
+            Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+            Write-Host "  [OK] Stopped backend process (PID: $procId)" -ForegroundColor Green
         } catch {
-            Write-Host "  [WARN] Could not stop process $pid" -ForegroundColor Yellow
+            Write-Host "  [WARN] Could not stop process $procId" -ForegroundColor Yellow
         }
     }
 } else {
@@ -23,12 +23,12 @@ if ($backendProcesses) {
 # Kill processes on port 3000 (frontend)
 $frontendProcesses = Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique
 if ($frontendProcesses) {
-    foreach ($pid in $frontendProcesses) {
+    foreach ($procId in $frontendProcesses) {
         try {
-            Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
-            Write-Host "  [OK] Stopped frontend process (PID: $pid)" -ForegroundColor Green
+            Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+            Write-Host "  [OK] Stopped frontend process (PID: $procId)" -ForegroundColor Green
         } catch {
-            Write-Host "  [WARN] Could not stop process $pid" -ForegroundColor Yellow
+            Write-Host "  [WARN] Could not stop process $procId" -ForegroundColor Yellow
         }
     }
 } else {

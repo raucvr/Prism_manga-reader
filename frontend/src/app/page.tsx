@@ -10,6 +10,7 @@ import { ThemeSelector } from "@/components/CharacterSelector";
 import { GenerationProgress } from "@/components/GenerationProgress";
 import { MangaReader } from "@/components/MangaReader";
 import { SettingsPanel } from "@/components/SettingsPanel";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/app-store";
 import { api } from "@/lib/api";
@@ -39,9 +40,12 @@ export default function Home() {
       return;
     }
 
+    console.log(`[Prism] Starting generation: theme=${mangaTheme}, language=${language}`);
+
     try {
       // Step 1: Generate storyboard
       setStage("generating-storyboard");
+      console.log("[Prism] Step 1: Generating storyboard...");
       const storyboard = await api.generateStoryboard({
         text: extractedText,
         title,
@@ -49,10 +53,23 @@ export default function Home() {
         num_panels: numPanels,
         language,
       });
+      console.log("[Prism] Storyboard response:", JSON.stringify(storyboard, null, 2).slice(0, 500));
+
+      // Validate storyboard structure before setting
+      if (!storyboard || typeof storyboard !== 'object') {
+        throw new Error("Invalid storyboard response: not an object");
+      }
+      if (!Array.isArray(storyboard.panels)) {
+        console.warn("[Prism] Storyboard panels is not an array, setting to empty array");
+        storyboard.panels = [];
+      }
+
       setStoryboard(storyboard);
+      console.log(`[Prism] Storyboard done: ${storyboard.panel_count} panels`);
 
       // Step 2: Generate manga
       setStage("generating-manga");
+      console.log("[Prism] Step 2: Generating manga images...");
       const mangaResult = await api.generateManga({
         text: extractedText,
         title,
@@ -61,10 +78,12 @@ export default function Home() {
         language,
       });
       setManga(mangaResult);
+      console.log(`[Prism] Manga done: ${mangaResult.panel_count} panels`);
 
       // Done
       setStage("completed");
     } catch (err) {
+      console.error("[Prism] Generation failed:", err);
       setError(err instanceof Error ? err.message : "Generation failed, please try again");
     }
   };
@@ -72,6 +91,9 @@ export default function Home() {
   const showUploadSection = (stage === "idle" || stage === "uploading" || stage === "parsing") && !manga;
   const showGenerating = ["generating-storyboard", "generating-manga"].includes(stage);
   const showResult = stage === "completed" && manga;
+
+  // Debug logging
+  console.log("[Page] Render state:", { stage, showUploadSection, showGenerating, showResult });
 
   return (
     <main className="min-h-screen relative overflow-hidden">
@@ -88,7 +110,7 @@ export default function Home() {
       <div className="container mx-auto px-4 pb-12">
         <Header />
 
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout">
           {/* Upload section */}
           {showUploadSection && (
             <motion.div
@@ -96,6 +118,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
               className="space-y-8"
             >
               <Dropzone />
@@ -141,8 +164,11 @@ export default function Home() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
             >
-              <GenerationProgress />
+              <ErrorBoundary onReset={reset}>
+                <GenerationProgress />
+              </ErrorBoundary>
             </motion.div>
           )}
 
@@ -191,7 +217,7 @@ export default function Home() {
 
       {/* Footer */}
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 text-sm text-muted-foreground/50">
-        Powered by Prism AI 🔮
+        Powered by Prism
       </div>
     </main>
   );

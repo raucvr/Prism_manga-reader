@@ -336,10 +336,155 @@ characters:
     comic_role: "The expert mentor who demonstrates mastery and gives wise advice"
 
 # ============================================================
+# STUDIO GHIBLI UNIVERSE
+# Style: Soft watercolor, dreamy atmosphere, detailed backgrounds
+# ============================================================
+
+ghibli_characters:
+  haku:
+    name: "白"
+    name_en: "Haku"
+    name_jp: "ハク"
+    role: "protagonist"
+    description: "A wise and elegant young man. Calm, knowledgeable, and patient. The senior researcher/mentor role."
+
+    visual_traits:
+      body: "slender teenage boy, elegant posture, graceful movements"
+      face: "calm green eyes, serene expression, handsome features"
+      hair: "dark green-black straight hair, bob cut"
+      clothes: "white and blue traditional Japanese style clothing"
+      colors:
+        primary: "white, blue"
+        accent: "green (eyes)"
+
+    style_prompt: |
+      HAKU from Spirited Away - Studio Ghibli style (HUMAN FORM ONLY):
+      - Appearance: Elegant teenage boy with dark green-black straight hair in a bob cut
+      - Face: Calm green eyes, serene and wise expression, handsome delicate features
+      - Clothes: White and blue traditional Japanese clothing
+      - Personality: Calm, wise, protective, knowledgeable
+      - Art style: Soft watercolor textures, detailed backgrounds, Ghibli's signature warm lighting
+      - IMPORTANT: Always draw in human form, never dragon form
+
+    expressions:
+      explaining:
+        description: "解释说明，冷静睿智"
+        prompt: "Haku explaining: calm wise expression, green eyes focused, one hand gesturing gently, elegant posture"
+      thinking:
+        description: "思考，若有所思"
+        prompt: "Haku thinking: contemplative expression, looking slightly upward, serene demeanor"
+
+    comic_role: "The wise mentor who explains complex concepts with patience and depth."
+
+  chihiro:
+    name: "千寻"
+    name_en: "Chihiro"
+    name_jp: "千尋"
+    role: "deuteragonist"
+    description: "A brave and curious girl. Represents the student who learns and grows. Asks thoughtful questions."
+
+    visual_traits:
+      body: "young girl, determined stance, expressive movements"
+      face: "large brown eyes, expressive face, determined look"
+      hair: "brown hair in ponytail with purple hair tie"
+      clothes: "simple clothes, often work uniform"
+      colors:
+        primary: "brown, pink"
+        accent: "purple (hair tie)"
+
+    style_prompt: |
+      CHIHIRO from Spirited Away - Studio Ghibli style:
+      - Appearance: Young girl with brown hair in a ponytail, purple hair tie
+      - Face: Large expressive brown eyes, determined expression
+      - Clothes: Simple casual clothes or work uniform
+      - Personality: Curious, brave, hardworking, grows through challenges
+      - Art style: Soft watercolor textures, expressive animation style, warm Ghibli lighting
+
+    expressions:
+      curious:
+        description: "好奇，提问"
+        prompt: "Chihiro curious: large eyes wide with interest, head slightly tilted, eager to learn expression"
+      thinking:
+        description: "思考，努力理解"
+        prompt: "Chihiro thinking: concentrated expression, brow slightly furrowed, working to understand"
+      happy:
+        description: "开心，理解了"
+        prompt: "Chihiro happy: bright smile, eyes sparkling with understanding, accomplished feeling"
+
+    comic_role: "The curious learner who asks insightful questions and shows growth through the story."
+
+  calcifer:
+    name: "卡西法"
+    name_en: "Calcifer"
+    name_jp: "カルシファー"
+    role: "tritagonist"
+    description: "A witty fire demon with a sharp tongue. Adds humor and points out contradictions."
+
+    visual_traits:
+      body: "small flame spirit, floating, animated fire shape"
+      face: "expressive flame face with eyes and mouth, changes color with mood"
+      colors:
+        primary: "orange, yellow"
+        accent: "blue (when cool/scared)"
+
+    style_prompt: |
+      CALCIFER from Howl's Moving Castle - Studio Ghibli style:
+      - Appearance: Small animated fire demon, floating flame with expressive face
+      - Face: Large expressive eyes, wide mouth that shows emotions, flame flickers with mood
+      - Colors: Orange and yellow flames, turns blue when scared or cool
+      - Personality: Witty, sarcastic, secretly kind-hearted, grumpy but helpful
+      - Art style: Soft glowing effects, warm Ghibli animation style
+
+    expressions:
+      default:
+        description: "默认表情，有点傲娇"
+        prompt: "Calcifer default: slightly grumpy flame face, one eyebrow raised, flickering gently"
+      sarcastic:
+        description: "吐槽，讽刺"
+        prompt: "Calcifer sarcastic: smirking flame face, eyes half-closed, witty expression"
+      excited:
+        description: "兴奋，火焰变大"
+        prompt: "Calcifer excited: flames growing bigger, eyes wide, enthusiastic expression"
+
+    comic_role: "The witty commentator who adds humor and points out flaws or contradictions in arguments."
+
+# ============================================================
 # 风格指南 - 所有角色通用
 # ============================================================
 
 style_guide:
+  chiikawa:
+    name: "Nagano Style / Chiikawa Style"
+    keywords:
+      - "Chiikawa art style by Nagano"
+      - "thick consistent black hand-drawn outlines (2-3px width)"
+      - "soft pastel colors (pink, light blue, cream, white)"
+      - "chibi proportions with large head small body"
+      - "simple rounded blob shapes"
+      - "clean vector-like flat illustration"
+      - "absolutely NO gradients NO shading NO shadows"
+      - "cute Japanese kawaii aesthetic"
+      - "minimalist simple solid color backgrounds"
+      - "extremely simplified facial features (just dots for eyes)"
+      - "pink circular blush marks on all characters"
+
+  ghibli:
+    name: "Studio Ghibli Style"
+    keywords:
+      - "Studio Ghibli animation style"
+      - "soft watercolor textures and backgrounds"
+      - "warm natural lighting with golden hour tones"
+      - "detailed lush nature and environment"
+      - "expressive character animation"
+      - "dreamy atmospheric perspective"
+      - "hand-painted aesthetic"
+      - "nostalgic and whimsical mood"
+      - "gentle color palettes with greens and earth tones"
+      - "detailed facial expressions with large expressive eyes"
+      - "flowing hair and fabric movement"
+
+# Legacy format for backwards compatibility
+chiikawa_style:
   name: "Nagano Style / Chiikawa Style"
 
   # 核心风格关键词
