@@ -162,13 +162,25 @@ class Storyboarder:
         full_text_hash = hashlib.sha256(text.encode()).hexdigest()
         cache_key = hashlib.md5(f"v{CACHE_VERSION}:{full_text_hash}:{title}:{language}:{self.character_theme}".encode()).hexdigest()
 
-        print(f"[Storyboarder] Input text length: {len(text)} chars, hash: {full_text_hash[:16]}...")
-        print(f"[Storyboarder] Text preview: {text[:200]}...")
+        print(f"[Storyboarder] ========== NEW GENERATION REQUEST ==========")
+        print(f"[Storyboarder] Cache version: {CACHE_VERSION}")
+        print(f"[Storyboarder] Input text length: {len(text)} chars")
+        print(f"[Storyboarder] Full text hash: {full_text_hash}")
+        print(f"[Storyboarder] Cache key: {cache_key}")
+        print(f"[Storyboarder] Title: {title}")
+        print(f"[Storyboarder] Language: {language}, Theme: {self.character_theme}")
+        print(f"[Storyboarder] Text preview (first 500 chars):")
+        print(f"[Storyboarder] >>> {text[:500]} <<<")
+        print(f"[Storyboarder] Current cache size: {len(_storyboard_cache)} entries")
+        print(f"[Storyboarder] Cached keys: {list(_storyboard_cache.keys())[:3]}...")
 
         if cache_key in _storyboard_cache:
             cached = _storyboard_cache[cache_key]
-            print(f"[Storyboarder] Using cached storyboard ({len(cached.panels)} panels)")
+            print(f"[Storyboarder] ⚠️ CACHE HIT - Using cached storyboard ({len(cached.panels)} panels)")
+            print(f"[Storyboarder] ⚠️ If content is wrong, restart backend to clear cache!")
             return cached
+
+        print(f"[Storyboarder] ✓ Cache miss - generating fresh storyboard")
 
         client = await get_client()
 
@@ -189,6 +201,8 @@ class Storyboarder:
 
         technical_analysis = analysis_response.content
         print(f"[Storyboarder] Technical analysis generated ({len(technical_analysis)} chars)")
+        print(f"[Storyboarder] Analysis preview (first 500 chars):")
+        print(f"[Storyboarder] >>> {technical_analysis[:500]} <<<")
 
         # ========== Step 2: 用英文生成高质量漫画分镜 ==========
         print(f"[Storyboarder] Step 2: Generating manga storyboard (in English for quality)...")
@@ -210,6 +224,9 @@ class Storyboarder:
         storyboard = self._parse_response(response.content, title, text, "en-US")
 
         print(f"[Storyboarder] Generated {len(storyboard.panels)} panels in English")
+        # Log first 3 panels for verification
+        for i, panel in enumerate(storyboard.panels[:3]):
+            print(f"[Storyboarder] Panel {panel.panel_number} dialogue: {panel.dialogue}")
 
         # ========== Step 3: 翻译对白到目标语言 ==========
         if language != "en-US":

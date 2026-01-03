@@ -117,7 +117,13 @@ async def generate_storyboard(request: TextToMangaRequest):
 
     AI 会根据论文内容自动决定需要多少个片段
     """
-    print(f"[API] /storyboard called: character={request.character}, text_len={len(request.text)}")
+    import hashlib
+    text_hash = hashlib.sha256(request.text.encode()).hexdigest()[:16]
+    print(f"[API] ========== /storyboard REQUEST ==========")
+    print(f"[API] character={request.character}, language={request.language}")
+    print(f"[API] title={request.title}")
+    print(f"[API] text_len={len(request.text)}, text_hash={text_hash}")
+    print(f"[API] Text preview: {request.text[:300]}...")
     try:
         storyboarder = get_storyboarder(request.character)
 
