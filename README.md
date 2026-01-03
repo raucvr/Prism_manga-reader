@@ -34,6 +34,12 @@ Prism is an open-source tool that converts complex academic papers (PDFs) into e
 - **Multi-Language Support** - Generate manga in English, Chinese, or Japanese
 - **Real-time Generation Progress** - Watch your manga come to life panel by panel
 
+### Example Output
+
+<p align="center">
+  <img src="docs/demo5.png" width="100%" alt="Full Manga Example"/>
+</p>
+
 ## How It Works
 
 ```
