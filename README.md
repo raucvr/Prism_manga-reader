@@ -23,13 +23,10 @@ Prism is an open-source tool that converts complex academic papers (PDFs) into e
 ## Features
 
 - **PDF to Manga Conversion** - Upload any academic paper and get a beautifully illustrated manga
-- **Multiple Art Styles** - Choose from 6 unique manga themes:
+- **Multiple Art Styles** - Choose from 3 unique manga themes:
+  - Chibikawa - Original Cute, simple characters with soft pastel colors
   - Chiikawa - Cute, simple characters with soft pastel colors
-  - Doraemon - Classic manga style with clean lines
-  - Pleasant Goat - Colorful Chinese animation aesthetic
-  - Pokemon - Dynamic anime style
   - Studio Ghibli - Dreamy watercolor atmosphere
-  - Western Comic - Bold superhero comic aesthetic
 - **AI-Powered Storyboarding** - Intelligent breakdown of complex concepts into visual panels
 - **Multi-Language Support** - Generate manga in English, Chinese, or Japanese
 - **Real-time Generation Progress** - Watch your manga come to life panel by panel
