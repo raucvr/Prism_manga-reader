@@ -12,7 +12,7 @@
   <img src="docs/demo4.png" width="45%" alt="Demo Panel 4"/>
 </p>
 
-Prism is an open-source tool that converts complex academic papers (PDFs) into engaging, easy-to-understand manga-style comics. Powered by Nano Banana Pro (Gemini), it makes learning fun and accessible for everyone.
+Prism is an open-source tool that converts complex academic papers (PDFs) into engaging, easy-to-understand manga-style comics. Powered by Gemini's image generation capabilities, it makes learning fun and accessible for everyone.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.11+-green.svg)
@@ -24,11 +24,13 @@ Prism is an open-source tool that converts complex academic papers (PDFs) into e
 
 - **PDF to Manga Conversion** - Upload any academic paper and get a beautifully illustrated manga
 - **Multiple Art Styles** - Choose from 3 unique manga themes:
-  - Chibikawa - Original Cute, simple characters with soft pastel colors
-  - Chiikawa - Cute, simple characters with soft pastel colors
-  - Studio Ghibli - Dreamy watercolor atmosphere
-- **AI-Powered Storyboarding** - Intelligent breakdown of complex concepts into visual panels
-- **Multi-Language Support** - Generate manga in English, Chinese, or Japanese
+  - **Chibikawa** - Original cute characters (kumo, nezu, papi) with consistent design across all panels
+  - **Chiikawa** - Cute, simple characters with soft pastel colors (Nagano style)
+  - **Studio Ghibli** - Dreamy watercolor atmosphere (Spirited Away style)
+- **Character Consistency** - Reference images ensure characters look the same throughout the entire manga
+- **AI-Powered Storyboarding** - Intelligent breakdown of complex concepts into visual panels with proper story ordering
+- **Multi-Language Support** - Generate manga in English, Chinese (中文), or Japanese (日本語)
+- **CJK Text Optimization** - Dynamic batch sizing for clear, readable Chinese/Japanese text
 - **Real-time Generation Progress** - Watch your manga come to life panel by panel
 
 ### Example Output
@@ -41,15 +43,24 @@ Prism is an open-source tool that converts complex academic papers (PDFs) into e
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  Upload PDF │ ──▶ │ Parse Text  │ ──▶ │ Storyboard  │ ──▶ │ Generate    │
-│             │     │ & Structure │     │ Generation  │     │ Manga Panels│
+│  Upload PDF │ ──▶ │   Analyze   │ ──▶ │ Storyboard  │ ──▶ │  Generate   │
+│             │     │  (English)  │     │  + Translate│     │ Manga Panels│
 └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
 ```
 
 1. **Upload** - Drop your PDF academic paper
-2. **Parse** - AI extracts and understands the content
-3. **Storyboard** - Creates a visual narrative with panels and dialogue
-4. **Generate** - Nano Banana Pro renders each manga panel
+2. **Analyze** - AI extracts and understands the content in English (for accuracy)
+3. **Storyboard** - Creates a visual narrative, then translates dialogue to target language
+4. **Generate** - Gemini renders each manga panel with consistent character designs
+
+### Three-Step Translation Pipeline
+
+For optimal quality, Prism uses a three-step process:
+1. **English Analysis** - Technical content is analyzed in English for accuracy
+2. **English Storyboard** - Panels and dialogue are created in English first
+3. **Translation** - Final dialogue is translated to the target language (zh-CN, ja-JP)
+
+This ensures technical terms are understood correctly before translation.
 
 ## Quick Start
 
@@ -57,7 +68,7 @@ Prism is an open-source tool that converts complex academic papers (PDFs) into e
 
 - Python 3.11+
 - Node.js 18+
-- OpenRouter API key (for Nano Banana Pro access)
+- OpenRouter API key (for Gemini access)
 
 ### Installation
 
@@ -77,8 +88,17 @@ npm install
 
 ### Configuration
 
-Set your OpenRouter API key as an environment variable:
+1. Copy the example config file:
+```bash
+cp config/api_config.yaml.example config/api_config.yaml
+```
 
+2. Set your OpenRouter API key in `config/api_config.yaml`:
+```yaml
+api_key: "your-openrouter-api-key"
+```
+
+Or use environment variable:
 ```bash
 # Windows
 set OPENROUTER_API_KEY=your-openrouter-api-key
@@ -86,8 +106,6 @@ set OPENROUTER_API_KEY=your-openrouter-api-key
 # Linux/macOS
 export OPENROUTER_API_KEY=your-openrouter-api-key
 ```
-
-The config file (`config/api_config.yaml`) uses `${OPENROUTER_API_KEY}` to read from environment.
 
 ### Running
 
@@ -110,12 +128,11 @@ prism/
 ├── backend/
 │   ├── engines/           # AI engine implementations
 │   │   ├── base.py        # Abstract base classes
-│   │   ├── nano_banana.py # Google Gemini direct API
 │   │   └── openrouter.py  # OpenRouter API wrapper
 │   ├── services/
 │   │   ├── pdf_parser.py      # PDF text extraction
 │   │   ├── storyboarder.py    # Storyboard generation
-│   │   └── manga_generator.py # Image generation
+│   │   └── manga_generator.py # Image generation with character consistency
 │   ├── routes/            # API endpoints
 │   └── main.py            # FastAPI application
 ├── frontend/
@@ -125,9 +142,36 @@ prism/
 │   │   └── store/         # Zustand state management
 │   └── package.json
 ├── config/
-│   └── api_config.yaml    # API configuration
+│   ├── api_config.yaml.example  # Config template
+│   └── character_images/        # Reference images for Chibikawa theme
+│       ├── kumo.jpeg
+│       ├── nezu.jpeg
+│       └── papi.jpeg
 └── README.md
 ```
+
+## Technical Details
+
+### Character Consistency
+
+For the Chibikawa theme, Prism ensures character consistency by:
+1. **Reference Images** - Loading character design images for each API call
+2. **Explicit Mapping** - Telling the model exactly which image corresponds to which character
+3. **Low Temperature** - Using temperature=0.3 to reduce randomness
+4. **Negative Prompts** - Explicitly forbidding character design deviations
+
+### Dynamic Batch Sizing
+
+For CJK languages (Chinese, Japanese), Prism dynamically adjusts batch size:
+- Long dialogue (>200 chars): 1 panel per batch
+- Medium dialogue (>100 chars): 2 panels per batch
+- Short dialogue: 4 panels per batch (2x2 grid)
+
+This ensures text remains readable even with complex characters.
+
+### Story Ordering
+
+All panels are sorted by `panel_number` after generation to ensure the story flows correctly, even if the AI generates them out of order.
 
 ## API Reference
 
@@ -137,18 +181,17 @@ prism/
 |--------|----------|-------------|
 | `GET` | `/health` | Health check |
 | `GET` | `/api/config` | Get current configuration |
-| `POST` | `/api/config/reload` | Reload configuration |
-| `POST` | `/api/generate/storyboard` | Generate storyboard from text |
-| `POST` | `/api/generate/manga` | Generate manga from storyboard |
 | `POST` | `/api/manga/from-pdf` | Full pipeline: PDF to manga |
+| `POST` | `/api/manga/storyboard` | Generate storyboard from PDF |
+| `GET` | `/api/manga/progress` | Get generation progress |
 
 ### Example: Generate Manga from PDF
 
 ```bash
 curl -X POST http://localhost:8000/api/manga/from-pdf \
   -F "file=@paper.pdf" \
-  -F "theme=chiikawa" \
-  -F "language=en-US"
+  -F "theme=chibikawa" \
+  -F "language=zh-CN"
 ```
 
 ## Configuration Options
@@ -158,27 +201,23 @@ curl -X POST http://localhost:8000/api/manga/from-pdf \
 | Option | Default | Description |
 |--------|---------|-------------|
 | `default_style` | `full_color_manga` | Art style |
-| `panels_per_page` | `4` | Number of panels per page |
-| `render_text_in_image` | `true` | Include dialogue in images |
-| `default_theme` | `chiikawa` | Default manga theme |
+| `default_theme` | `chibikawa` | Default manga theme |
+| `temperature` | `0.3` | Generation randomness (lower = more consistent) |
 
 ### Output Settings
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `image_format` | `png` | Output image format |
-| `image_quality` | `95` | JPEG/PNG quality |
+| `image_quality` | `95` | PNG quality |
 | `max_width` | `1024` | Maximum image width |
 | `max_height` | `1536` | Maximum image height |
 
 ## Supported Models
 
-Prism uses **Nano Banana Pro** (Gemini) for image generation:
-
 | Provider | Model | Description |
 |----------|-------|-------------|
-| OpenRouter | `google/gemini-3-pro-image-preview` | Recommended - Nano Banana Pro via OpenRouter |
-| Google | `gemini-2.0-flash-exp-image-generation` | Direct Google API (requires API key) |
+| OpenRouter | `google/gemini-2.0-flash-exp-image-generation` | Recommended - Gemini image generation |
 
 ## Tech Stack
 
@@ -197,7 +236,7 @@ Prism uses **Nano Banana Pro** (Gemini) for image generation:
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+We welcome contributions!
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -211,8 +250,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 - [ ] Custom character upload
 - [ ] Panel layout customization
 - [ ] Export to PDF/EPUB
-- [ ] Collaborative editing
-- [ ] Fine-tuned style models
+- [ ] More art styles
 - [ ] Mobile app
 
 ## License
@@ -221,9 +259,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-- [Nano Banana Pro](https://openrouter.ai) - AI image generation
-- [OpenRouter](https://openrouter.ai) - API gateway
-- [Chiikawa](https://twitter.com/ngnchiikawa) - Inspiration for default art style
+- [OpenRouter](https://openrouter.ai) - API gateway for AI models
+- [Chiikawa](https://twitter.com/ngnchiikawa) - Inspiration for cute art style
 
 ---
 
