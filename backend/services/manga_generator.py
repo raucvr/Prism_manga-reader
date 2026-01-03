@@ -419,33 +419,49 @@ class MangaGenerator:
         """
         根据面板文本长度动态计算最佳批次大小
 
-        CJK 文本较长时减少每批面板数量，以保证文字清晰度
+        长对话时减少每批面板数量，以保证文字清晰可读
         """
         if not panels:
             return 1
 
-        # 计算所有面板中最长的单个对白
+        # 计算所有面板中最长的单个对白和总对白长度
         max_single_dialogue = 0
+        total_dialogue_len = 0
 
         for panel in panels:
             if panel.dialogue:
                 for char, text in panel.dialogue.items():
                     max_single_dialogue = max(max_single_dialogue, len(text))
+                    total_dialogue_len += len(text)
 
-        # CJK 语言的阈值（宽松版）
+        print(f"[MangaGenerator] Dialogue analysis: max_single={max_single_dialogue}, total={total_dialogue_len}, is_cjk={is_cjk}")
+
+        # CJK 语言的阈值（更严格，确保文字清晰）
         if is_cjk:
-            # 如果单个对白超过 200 字，只生成 1 个面板
-            if max_single_dialogue > 200:
+            # 如果单个对白超过 150 字，只生成 1 个面板
+            if max_single_dialogue > 150:
+                print(f"[MangaGenerator] Long CJK dialogue ({max_single_dialogue} chars), using 1 panel")
                 return 1
-            # 如果单个对白超过 100 字，只生成 2 个面板
-            elif max_single_dialogue > 100:
+            # 如果单个对白超过 80 字，只生成 2 个面板
+            elif max_single_dialogue > 80:
+                print(f"[MangaGenerator] Medium CJK dialogue ({max_single_dialogue} chars), using 2 panels")
                 return min(2, len(panels))
             # 否则生成 4 个面板
             else:
                 return min(4, len(panels))
         else:
-            # 英文：无限制，始终 4 个面板
-            return min(4, len(panels))
+            # 英文：也根据对话长度调整
+            # 如果单个对白超过 300 字符，只生成 1 个面板
+            if max_single_dialogue > 300:
+                print(f"[MangaGenerator] Long English dialogue ({max_single_dialogue} chars), using 1 panel")
+                return 1
+            # 如果单个对白超过 150 字符，只生成 2 个面板
+            elif max_single_dialogue > 150:
+                print(f"[MangaGenerator] Medium English dialogue ({max_single_dialogue} chars), using 2 panels")
+                return min(2, len(panels))
+            # 否则生成 4 个面板
+            else:
+                return min(4, len(panels))
 
     def _get_batch_dimensions(self, batch_size: int) -> tuple:
         """

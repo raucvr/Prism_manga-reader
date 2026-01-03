@@ -479,7 +479,8 @@ Dialogue:
 - ⚠️ CRITICAL: ONLY use facts from the Technical Analysis above - NO hallucination
 - ⚠️ If the analysis says "Not mentioned" or "Not specified", do NOT invent that information
 - Copy exact numbers, formulas, method names (e.g., "Amber ff14SB" not "CHARMM36m")
-- Keep each dialogue SHORT and punchy (1-2 sentences max)
+- Dialogue can be as LONG as needed to explain concepts fully - NEVER truncate or cut off mid-sentence
+- If a concept requires detailed explanation, use the full dialogue without shortening
 - Every fact in your manga MUST come from the Technical Analysis above
 
 # Characters
