@@ -150,12 +150,10 @@ class MangaGenerator:
         self.output_dir.mkdir(exist_ok=True)
         self.char_lib = CharacterLibrary()
         self.panels_per_batch = 4  # 每次生成4个panel
-        # Kumomo 角色名映射 - 用于规范化角色名
-        self.kumomo_char_map = {
-            "kumo": "kumo", "cloud": "kumo", "云朵": "kumo",
-            "nezu": "nezu", "hedgehog": "nezu", "刺猬": "nezu",
-            "papi": "papi", "dog": "papi", "小狗": "papi", "puppy": "papi"
-        }
+        # 动态构建角色名映射 - 从 character_images 目录加载
+        self.kumomo_char_map = {}
+        for char_name in self.char_lib.get_kumomo_character_names():
+            self.kumomo_char_map[char_name] = char_name
 
     async def generate_from_storyboard(
         self,
@@ -220,7 +218,7 @@ class MangaGenerator:
                 # Update progress
                 set_panel_progress(batch_end, total_panels)
 
-                # 保存批次图像
+                # 保存批次图像（每个批次单独备份）
                 if save_progress and result.image_base64:
                     panel_path = progress_dir / f"{safe_title}_{session_id}_batch{batch_num:03d}.png"
                     try:
@@ -229,12 +227,6 @@ class MangaGenerator:
                             f.write(img_data)
                     except Exception as e:
                         print(f"[MangaGenerator] Failed to save: {e}")
-
-                # 每 3 个批次保存一次合并图
-                if save_progress and len(generated_panels) % 3 == 0:
-                    await self._save_partial_manga(
-                        storyboard, generated_panels, progress_dir, safe_title, session_id
-                    )
 
             except Exception as e:
                 failed_count += 1
@@ -248,8 +240,8 @@ class MangaGenerator:
 
         # 保存最终结果
         if save_progress and generated_panels:
-            await self._save_partial_manga(
-                storyboard, generated_panels, progress_dir, safe_title, session_id, is_final=True
+            await self._save_final_manga(
+                storyboard, generated_panels, progress_dir, safe_title, session_id
             )
 
         print(f"[MangaGenerator] Completed: {batch_num} batches ({total_panels} panels), {failed_count} failed")
@@ -309,13 +301,13 @@ class MangaGenerator:
             height=height,
             style=self.config.manga_settings.default_style,
             negative_prompt=negative_prompt,
-            temperature=0.3
+            temperature=0.2  # 低温度确保角色一致性
         )
 
         # 加载参考图片 (动态: 只加载批次需要的角色)
         reference_images = []
         if theme == "kumomo":
-            chars_to_load = list(batch_characters) if batch_characters else ["kumo", "nezu", "papi"]
+            chars_to_load = list(batch_characters) if batch_characters else self.char_lib.get_kumomo_character_names()
             reference_images = self._load_specific_kumomo_references(chars_to_load)
         else:
             for panel in panels[:1]:
@@ -329,6 +321,10 @@ class MangaGenerator:
 
         for attempt in range(max_retries):
             try:
+                # 更新进度状态，让前端知道正在做什么
+                if theme == "kumomo" and attempt > 0:
+                    set_stage("generating", f"Validating characters (retry {attempt}/{max_retries})")
+
                 # 构建 prompt（如果有验证反馈则加入更强的纠错指令）
                 if validation_feedback:
                     prompt = f"""RETRY: {validation_feedback}
@@ -347,6 +343,7 @@ class MangaGenerator:
 
                     # kumomo 主题: 每次都验证，确保角色正确
                     if theme == "kumomo":
+                        set_stage("generating", f"Validating character consistency...")
                         generated_img = ImageContent(
                             data=image.data,
                             mime_type=image.mime_type,
@@ -471,30 +468,25 @@ class MangaGenerator:
 
         client = await get_client()
 
-        # 构建 Panel 摘要
-        panel_summaries = []
-        for i, panel in enumerate(panels):
-            chars = ", ".join(panel.characters) if panel.characters else "none"
-            panel_summaries.append(f"Panel {i+1}: Characters expected = [{chars}]")
-        script_context = "\n".join(panel_summaries)
+        # 动态生成验证提示词
+        char_names = self.char_lib.get_kumomo_character_names()
+        num_chars = len(char_names)
 
-        # 严格验证 - 先描述再判断
-        validate_prompt = f"""CHARACTER DESIGNS (reference):
-- Image 1 = kumo
-- Image 2 = nezu
-- Image 3 = papi
+        # 构建角色映射说明
+        image_mapping = "\n".join([f"Image {i+1} = {name}'s design" for i, name in enumerate(char_names)])
+        last_img_num = num_chars + 1
 
-GENERATED MANGA = Image 4 (last image)
+        validate_prompt = f"""Look at the reference character designs (Image 1-{num_chars}) and the generated manga (Image {last_img_num}).
 
-STEP 1: List each character you see in the manga. Describe their shape briefly.
-STEP 2: For each character, does it look like the reference design?
+{image_mapping}
+Image {last_img_num} = generated manga
 
-STRICT RULE: If ANY character does NOT match its reference design, answer FAIL.
+Question: Do the characters in Image {last_img_num} look EXACTLY like their reference designs?
 
-Answer format:
-PASS (all characters match)
-or
-FAIL: [which character is wrong and why]"""
+IMPORTANT: The character must have the SAME appearance as the reference image.
+A different animal is NOT the same character.
+
+Answer only: PASS or FAIL"""
 
         # 发送参考图 + 生成的漫画图进行验证
         all_images = reference_images + [generated_image]
@@ -513,27 +505,14 @@ FAIL: [which character is wrong and why]"""
                 config=config
             )
 
-            result = response.content.strip()
-            print(f"[MangaGenerator] Validation: {result[:200]}")
+            result = response.content.strip().upper()
+            print(f"[MangaGenerator] Validation result: {result}")
 
-            result_upper = result.upper()
-
-            # 严格模式：只有明确说 PASS 且没有 FAIL 才通过
-            if "PASS" in result_upper and "FAIL" not in result_upper:
-                # 额外检查：如果提到了错误的角色类型，仍然判定失败
-                wrong_chars = ["CAT", "RABBIT", "CHIIKAWA", "HACHIWARE", "USAGI"]
-                for wc in wrong_chars:
-                    if wc in result_upper:
-                        return False, f"Wrong character type detected: {wc}"
+            # 简单判断：只有明确 PASS 才通过，其他都失败
+            if "PASS" in result and "FAIL" not in result:
                 return True, ""
-            elif "FAIL" in result_upper:
-                # 提取失败原因
-                if ":" in result:
-                    return False, result.split(":", 1)[1].strip()[:100]
-                return False, result[:100]
-
-            # 严格模式：不确定时默认失败
-            return False, "Validation unclear - treating as fail"
+            else:
+                return False, "Characters don't match reference"
 
         except Exception as e:
             print(f"[MangaGenerator] Validation error: {e}")
@@ -626,17 +605,19 @@ FAIL: [which character is wrong and why]"""
         else:
             text_note = f"Render text CLEARLY in speech bubbles and narration boxes."
 
-        # Kumomo 原创角色参考 - 极简：只说明图片对应哪个角色
-        char_ref = ""
+        # Kumomo 原创角色参考 - 开头和结尾都提醒
+        char_ref_start = ""
+        char_ref_end = ""
         if theme == "kumomo":
-            char_ref = """[kumo looks like this: kumo.jpeg]
-[nezu looks like this: nezu.jpeg]
-[papi looks like this: papi.jpeg]
-"""
+            # 动态生成角色参考说明
+            char_names = self.char_lib.get_kumomo_character_names()
+            char_lines = [f"- Image {i+1} = {name} (draw {name} EXACTLY like this)" for i, name in enumerate(char_names)]
+            char_ref_start = "CHARACTER DESIGNS (attached images above):\n" + "\n".join(char_lines) + "\n\n"
+            char_ref_end = "\n\nREMINDER: Draw characters EXACTLY like the reference images above. Do NOT create different animals."
 
-        prompt = f"""{char_ref}{layout_desc}, {style} style. {text_note}
+        prompt = f"""{char_ref_start}{layout_desc}, {style} style. {text_note}
 
-{panels_text}"""
+{panels_text}{char_ref_end}"""
 
         return prompt
 
@@ -712,8 +693,8 @@ FAIL: [which character is wrong and why]"""
         return reference_images
 
     def _load_all_kumomo_references(self) -> List[ImageContent]:
-        """(Legacy) 加载所有 kumomo 角色"""
-        return self._load_specific_kumomo_references(["kumo", "nezu", "papi"])
+        """加载所有原创角色参考图"""
+        return self._load_specific_kumomo_references(self.char_lib.get_kumomo_character_names())
 
     def _load_specific_kumomo_references(self, required_chars: List[str]) -> List[ImageContent]:
         """
@@ -759,48 +740,50 @@ FAIL: [which character is wrong and why]"""
 
         return reference_images
 
-    async def _save_partial_manga(
+    async def _save_final_manga(
         self,
         storyboard: Storyboard,
         panels: List[GeneratedPanel],
         progress_dir: Path,
         safe_title: str,
-        session_id: str,
-        is_final: bool = False
+        session_id: str
     ):
-        """保存部分生成的漫画"""
+        """保存最终生成的漫画和分镜脚本"""
+        import json
+
         try:
-            partial_manga = GeneratedManga(
+            final_manga = GeneratedManga(
                 title=storyboard.title,
                 panels=panels,
                 character_theme=storyboard.character_theme,
                 language=storyboard.language
             )
 
-            suffix = "final" if is_final else f"partial_{len(panels)}"
-            filename = f"{safe_title}_{session_id}_{suffix}.png"
+            # 保存漫画图片
+            filename = f"{safe_title}_{session_id}_final.png"
             output_path = progress_dir / filename
 
-            combined = partial_manga.get_combined_image()
+            combined = final_manga.get_combined_image()
             with open(output_path, "wb") as f:
                 f.write(combined)
 
-            print(f"[MangaGenerator] Saved {'final' if is_final else 'partial'}: {output_path.name}")
+            print(f"[MangaGenerator] Saved final: {output_path.name}")
 
-            # 保存元数据
-            meta_path = progress_dir / f"{safe_title}_{session_id}_meta.json"
-            meta = {
-                "title": storyboard.title,
-                "total_panels": len(storyboard.panels),
-                "generated_panels": len(panels),
-                "session_id": session_id,
-                "is_complete": is_final and len(panels) == len(storyboard.panels)
-            }
-            with open(meta_path, "w", encoding="utf-8") as f:
-                json.dump(meta, f, ensure_ascii=False, indent=2)
+            # 保存分镜脚本 JSON（用于验证图像生成质量）
+            json_filename = f"{safe_title}_{session_id}_storyboard.json"
+            json_path = progress_dir / json_filename
+
+            storyboard_data = storyboard.to_dict()
+            storyboard_data["session_id"] = session_id
+            storyboard_data["generated_at"] = datetime.now().isoformat()
+
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump(storyboard_data, f, ensure_ascii=False, indent=2)
+
+            print(f"[MangaGenerator] Saved storyboard: {json_filename}")
 
         except Exception as e:
-            print(f"[MangaGenerator] Failed to save partial: {e}")
+            print(f"[MangaGenerator] Failed to save final: {e}")
 
 
 # 全局实例

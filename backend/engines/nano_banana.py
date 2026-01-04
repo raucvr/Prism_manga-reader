@@ -220,7 +220,7 @@ class NanoBananaEngine(BaseEngine):
             "contents": [{"parts": parts}],
             "generationConfig": {
                 "responseModalities": ["TEXT", "IMAGE"],
-                "temperature": 1.0,
+                "temperature": config.temperature,  # 使用配置的温度，不要硬编码
             }
         }
 

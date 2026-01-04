@@ -43,7 +43,7 @@ const steps: StepInfo[] = [
 
 export function GenerationProgress() {
   const { stage, storyboard } = useAppStore();
-  const [panelProgress, setPanelProgress] = useState({ current: 0, total: 0 });
+  const [panelProgress, setPanelProgress] = useState({ current: 0, total: 0, message: "" });
 
   const currentStepIndex = steps.findIndex((s) => s.stage === stage);
   const isGenerating = ["parsing", "generating-storyboard", "generating-manga"].includes(stage);
@@ -64,6 +64,7 @@ export function GenerationProgress() {
           setPanelProgress({
             current: progress.current_panel,
             total: progress.total_panels,
+            message: progress.message || "",
           });
         }
       } catch (e) {
@@ -71,9 +72,9 @@ export function GenerationProgress() {
       }
     };
 
-    // Poll immediately and then every 2 seconds
+    // Poll immediately and then every 1 second (faster updates during validation)
     pollProgress();
-    const interval = setInterval(pollProgress, 2000);
+    const interval = setInterval(pollProgress, 1000);
 
     return () => clearInterval(interval);
   }, [stage]);
@@ -150,11 +151,16 @@ export function GenerationProgress() {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full"
+            className="mt-4 inline-flex flex-col items-center gap-2"
           >
-            <span className="text-2xl font-bold text-primary">
+            <span className="px-4 py-2 bg-primary/10 rounded-full text-2xl font-bold text-primary">
               Panel {panelProgress.current} / {panelProgress.total}
             </span>
+            {panelProgress.message && (
+              <span className="text-sm text-muted-foreground">
+                {panelProgress.message}
+              </span>
+            )}
           </motion.div>
         )}
 

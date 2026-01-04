@@ -120,9 +120,11 @@ class Storyboard:
                     "characters": p.characters,
                     "character_emotions": p.character_emotions,
                     "dialogue": p.dialogue,
+                    "narration": p.narration,
                     "visual_metaphor": p.visual_metaphor,
                     "props": p.props,
                     "background": p.background,
+                    "layout_hint": p.layout_hint,
                 }
                 for p in self.panels
             ]
@@ -141,6 +143,7 @@ class Storyboarder:
     def __init__(self, character_theme: str = "chiikawa"):
         self.character_theme = character_theme
         self.config = get_config()
+        self.char_lib = CharacterLibrary()  # 动态加载原创角色
 
     async def generate_storyboard(
         self,
@@ -227,6 +230,9 @@ class Storyboarder:
 
         storyboard.language = language
 
+        # ========== Step 4: 强制执行对话长度限制 ==========
+        storyboard = self._enforce_dialogue_limits(storyboard, language)
+
         # 只缓存成功的结果（>= 10 panels 且非 fallback）
         is_fallback = getattr(storyboard, 'is_fallback', False)
         min_panels_to_cache = 10
@@ -247,28 +253,40 @@ class Storyboarder:
         technical_analysis: str = ""
     ) -> Storyboard:
         """
-        翻译分镜对白到目标语言
+        翻译分镜到目标语言（对白 + 旁白）
         包含技术分析作为上下文，确保专业术语翻译准确
         """
         lang_map = {"zh-CN": "Simplified Chinese", "ja-JP": "Japanese"}
         target_lang_name = lang_map.get(target_language, target_language)
 
-        # 收集所有对白
-        all_dialogues = []
-        for panel in storyboard.panels:
-            for char, text in panel.dialogue.items():
-                all_dialogues.append(f"{panel.panel_number}|{char}|{text}")
+        # 收集所有需要翻译的文本
+        # 格式: panel_number|type|key|text
+        # type: dialogue, narration, title
+        all_texts = []
 
-        if not all_dialogues:
+        # 标题
+        if storyboard.title:
+            all_texts.append(f"0|title|title|{storyboard.title}")
+
+        for panel in storyboard.panels:
+            # 对白
+            for char, text in panel.dialogue.items():
+                if text:
+                    all_texts.append(f"{panel.panel_number}|dialogue|{char}|{text}")
+            # 旁白
+            if panel.narration:
+                all_texts.append(f"{panel.panel_number}|narration|narration|{panel.narration}")
+
+        if not all_texts:
             return storyboard
 
         # 批量翻译
-        dialogues_text = "\n".join(all_dialogues)
+        texts_to_translate = "\n".join(all_texts)
 
         # 包含技术分析摘要作为上下文
         context_summary = technical_analysis[:8000] if technical_analysis else ""
 
-        prompt = f"""You are translating manga dialogues about a scientific paper to {target_lang_name}.
+        prompt = f"""You are translating a manga storyboard about a scientific paper to {target_lang_name}.
 
 # CONTEXT (Technical Analysis of the Paper)
 {context_summary}
@@ -276,22 +294,27 @@ class Storyboarder:
 # TRANSLATION RULES
 - This is a manga explaining an ACADEMIC PAPER - preserve ALL technical terms accurately
 - Translate naturally in conversational {target_lang_name}
-- Keep exact numbers, formulas, method names (e.g., "Amber ff14SB", "hazard ratio 0.73")
+- Keep exact numbers, formulas, method names (e.g., "Amber ff14SB", "hazard ratio 0.73", "AdS/CFT")
 - DO NOT add explanations or notes
 - Output ONLY the translations in the same format
 
 # FORMAT
-Input: panel_number|character|dialogue
-Output: panel_number|character|translated_dialogue
+Input: panel_number|type|key|text
+Output: panel_number|type|key|translated_text
 
-# DIALOGUES TO TRANSLATE
-{dialogues_text}
+Types:
+- dialogue: Character speech bubbles
+- narration: Explanation text boxes
+- title: Main title
 
-# OUTPUT (translations only):"""
+# TEXTS TO TRANSLATE
+{texts_to_translate}
+
+# OUTPUT (translations only, same format):"""
 
         config = GenerationConfig(
             temperature=0.3,
-            max_tokens=32000  # 足够翻译所有对话
+            max_tokens=32000  # 足够翻译所有内容
         )
 
         response = await client.generate_text(
@@ -302,39 +325,115 @@ Output: panel_number|character|translated_dialogue
         print(f"[Storyboarder] Translation response length: {len(response.content)} chars")
 
         # 解析翻译结果
-        translated_map = {}
+        translated_dialogues = {}  # {panel_num: {char: text}}
+        translated_narrations = {}  # {panel_num: text}
+        translated_title = None
+
         for line in response.content.strip().split("\n"):
             line = line.strip()
             if not line or "|" not in line:
                 continue
-            parts = line.split("|", 2)
-            if len(parts) >= 3:
+            parts = line.split("|", 3)
+            if len(parts) >= 4:
                 try:
                     panel_num = int(parts[0])
-                    char = parts[1].strip().lower()
-                    translated = parts[2].strip()
-                    if panel_num not in translated_map:
-                        translated_map[panel_num] = {}
-                    translated_map[panel_num][char] = translated
+                    text_type = parts[1].strip().lower()
+                    key = parts[2].strip().lower()
+                    translated = parts[3].strip()
+
+                    if text_type == "dialogue":
+                        if panel_num not in translated_dialogues:
+                            translated_dialogues[panel_num] = {}
+                        translated_dialogues[panel_num][key] = translated
+                    elif text_type == "narration":
+                        translated_narrations[panel_num] = translated
+                    elif text_type == "title" and panel_num == 0:
+                        translated_title = translated
                 except ValueError:
                     continue
 
-        print(f"[Storyboarder] Parsed {len(translated_map)} panels from translation")
+        print(f"[Storyboarder] Parsed: {len(translated_dialogues)} dialogue panels, {len(translated_narrations)} narrations")
 
-        # 应用翻译 - 使用大小写不敏感匹配
-        applied_count = 0
+        # 应用翻译
+        dialogue_count = 0
+        narration_count = 0
+
+        # 翻译标题
+        if translated_title:
+            storyboard.title = translated_title
+            print(f"[Storyboarder] Translated title: {translated_title[:50]}...")
+
         for panel in storyboard.panels:
-            if panel.panel_number in translated_map:
-                # 创建小写 key 的映射
+            # 应用对白翻译
+            if panel.panel_number in translated_dialogues:
                 dialogue_lower_map = {k.lower(): k for k in panel.dialogue.keys()}
-                for char, translated in translated_map[panel.panel_number].items():
-                    # 使用小写匹配
+                for char, translated in translated_dialogues[panel.panel_number].items():
                     if char in dialogue_lower_map:
                         original_key = dialogue_lower_map[char]
                         panel.dialogue[original_key] = translated
-                        applied_count += 1
+                        dialogue_count += 1
 
-        print(f"[Storyboarder] Applied {applied_count} translations")
+            # 应用旁白翻译
+            if panel.panel_number in translated_narrations:
+                panel.narration = translated_narrations[panel.panel_number]
+                narration_count += 1
+
+        print(f"[Storyboarder] Applied {dialogue_count} dialogues, {narration_count} narrations")
+
+        return storyboard
+
+    def _enforce_dialogue_limits(self, storyboard: Storyboard, language: str) -> Storyboard:
+        """
+        强制执行对话和旁白长度限制
+
+        限制（基于气泡空间）:
+        - 中文/日文对话: 40 字符
+        - 英文对话: 100 字符
+        - 中文/日文旁白: 60 字符
+        - 英文旁白: 150 字符
+        """
+        is_cjk = language in ["zh-CN", "ja-JP"]
+
+        # 设置限制
+        dialogue_limit = 40 if is_cjk else 100
+        narration_limit = 60 if is_cjk else 150
+
+        truncated_count = 0
+
+        for panel in storyboard.panels:
+            # 截断对话
+            for char, text in list(panel.dialogue.items()):
+                if len(text) > dialogue_limit:
+                    # 智能截断：在标点或空格处截断
+                    truncated = text[:dialogue_limit]
+                    # 尝试在最后一个标点处截断
+                    for punct in ['。', '！', '？', '，', '.', '!', '?', ',', ' ']:
+                        last_punct = truncated.rfind(punct)
+                        if last_punct > dialogue_limit * 0.6:  # 至少保留 60% 内容
+                            truncated = truncated[:last_punct + 1]
+                            break
+                    else:
+                        truncated = truncated + "..."
+
+                    panel.dialogue[char] = truncated
+                    truncated_count += 1
+
+            # 截断旁白
+            narration = getattr(panel, 'narration', '') or ''
+            if len(narration) > narration_limit:
+                truncated = narration[:narration_limit]
+                for punct in ['。', '！', '？', '.', '!', '?', ' ']:
+                    last_punct = truncated.rfind(punct)
+                    if last_punct > narration_limit * 0.6:
+                        truncated = truncated[:last_punct + 1]
+                        break
+                else:
+                    truncated = truncated + "..."
+                panel.narration = truncated
+                truncated_count += 1
+
+        if truncated_count > 0:
+            print(f"[Storyboarder] Truncated {truncated_count} dialogues/narrations to fit limits")
 
         return storyboard
 
@@ -350,13 +449,8 @@ Output: panel_number|character|translated_dialogue
         image_base_path = Path(__file__).parent.parent.parent / "config" / "character_images"
 
         if self.character_theme == "kumomo":
-            # kumomo 原创角色参考图 - 顺序必须与 prompt 一致
-            # Image 1: kumo, Image 2: nezu, Image 3: papi
-            char_images = [
-                ("kumo", "kumo.jpeg"),   # 云朵 - 好奇的学生
-                ("nezu", "nezu.jpeg"),   # 刺猬 - 怀疑论者
-                ("papi", "papi.jpeg"),   # 小狗 - 导师教授
-            ]
+            # 动态加载原创角色参考图
+            char_images = self.char_lib.kumomo_images_ordered
 
             for char_name, filename in char_images:
                 img_path = image_base_path / filename
@@ -413,11 +507,14 @@ Copy exact values from the paper. Output in English.
             example_chars = "haku, chihiro"
         elif self.character_theme == "kumomo":
             style_name = "Kumomo (original cute characters)"
-            characters_desc = """
-[kumo looks like this: kumo.jpeg] - curious student
-[nezu looks like this: nezu.jpeg] - skeptic
-[papi looks like this: papi.jpeg] - mentor/professor"""
-            example_chars = "papi, kumo"
+            # 动态生成角色描述，包含角色分工
+            role_desc = {"mentor": "professor/mentor", "student": "curious student", "skeptic": "skeptic/critic"}
+            chars_with_roles = self.char_lib.get_kumomo_characters_with_roles()
+            char_lines = [f"• {name} - {role_desc.get(role, role)} (appearance defined by reference image)" for name, role in chars_with_roles]
+            characters_desc = "\n" + "\n".join(char_lines)
+            # 使用前两个角色作为示例
+            char_names = [name for name, _ in chars_with_roles]
+            example_chars = f"{char_names[0]}, {char_names[1]}" if len(char_names) >= 2 else char_names[0] if char_names else "character1, character2"
         else:  # chiikawa
             style_name = "Chiikawa"
             characters_desc = """
@@ -459,8 +556,8 @@ Format each panel with ALL these fields:
 
 Requirements:
 - Visual: Describe character poses, expressions, props, actions in detail
-- Dialogue: Natural conversation that explains the paper
-- Narration: Scientific explanation as text box
+- Dialogue: Keep each line SHORT (max 40 characters for Chinese, 100 for English). Split long explanations across multiple panels.
+- Narration: Scientific explanation as text box (max 60 characters for Chinese, 150 for English)
 - Keep characters IN CHARACTER throughout (mentor teaches, student asks, skeptic questions)
 - Use exact numbers and terms from the paper"""
 
@@ -627,10 +724,17 @@ Requirements:
             if dialogue_section:
                 dialogue_text = dialogue_section.group(1)
                 # Match - character: "dialogue" format
+                # Only match double quotes to avoid cutting at apostrophes (don't, aren't, etc.)
                 dialogue_matches = re.findall(
-                    r'-\s*(\w+):\s*["\"\'](.+?)["\"\']',
+                    r'-\s*(\w+):\s*"([^"]+)"',
                     dialogue_text
                 )
+                # Also try curly quotes if no matches
+                if not dialogue_matches:
+                    dialogue_matches = re.findall(
+                        r'-\s*(\w+):\s*"([^"]+)"',
+                        dialogue_text
+                    )
                 for char, text in dialogue_matches:
                     dialogue[char.lower()] = text
 
@@ -688,7 +792,7 @@ Requirements:
         if self.character_theme == "ghibli":
             return ["haku", "chihiro"]
         elif self.character_theme == "kumomo":
-            return ["kumo", "nezu", "papi"]  # 云朵、刺猬、小狗
+            return self.char_lib.get_kumomo_character_names()
         return ["chiikawa", "hachiware"]
 
     def _create_fallback_storyboard(
@@ -730,33 +834,39 @@ Requirements:
                 )
             ]
         elif self.character_theme == "kumomo":
-            # 原创角色主题 - 使用正确的角色名: kumo(云朵), nezu(刺猬), papi(小狗)
+            # 动态获取原创角色名
+            char_names = self.char_lib.get_kumomo_character_names()
+            c1 = char_names[0] if len(char_names) > 0 else "character1"
+            c2 = char_names[1] if len(char_names) > 1 else "character2"
+            c3 = char_names[2] if len(char_names) > 2 else c1  # 如果只有2个角色，重复使用第一个
+            all_chars = char_names[:3] if len(char_names) >= 3 else char_names
+
             panels = [
                 Panel(
                     panel_number=1,
                     panel_type=PanelType.TITLE,
-                    visual_description="papi (puppy mentor) holding a book, kumo (cloud creature student) looking curious",
-                    characters=["papi", "kumo"],
-                    character_emotions={"papi": "explaining", "kumo": "curious"},
-                    dialogue={"papi": "今天来学习一个有趣的话题！", "kumo": "是什么呢？"},
+                    visual_description=f"{c1} holding a book, {c2} looking curious",
+                    characters=[c1, c2],
+                    character_emotions={c1: "explaining", c2: "curious"},
+                    dialogue={c1: "今天来学习一个有趣的话题！", c2: "是什么呢？"},
                     background="simple study room"
                 ),
                 Panel(
                     panel_number=2,
                     panel_type=PanelType.EXPLANATION,
-                    visual_description="papi at whiteboard explaining, kumo and nezu (hedgehog skeptic) listening",
-                    characters=["papi", "kumo", "nezu"],
-                    character_emotions={"papi": "explaining", "kumo": "thinking", "nezu": "skeptical"},
-                    dialogue={"papi": "让我来解释一下～", "nezu": "这个靠谱吗..."},
+                    visual_description=f"{c1} at whiteboard explaining, others listening",
+                    characters=all_chars,
+                    character_emotions={c: "thinking" for c in all_chars},
+                    dialogue={c1: "让我来解释一下～"},
                     background="classroom"
                 ),
                 Panel(
                     panel_number=3,
                     panel_type=PanelType.CONCLUSION,
-                    visual_description="All three kumomo characters celebrating - papi, kumo, and nezu",
-                    characters=["papi", "kumo", "nezu"],
-                    character_emotions={"papi": "happy", "kumo": "happy", "nezu": "excited"},
-                    dialogue={"kumo": "原来如此！", "papi": "做得好！", "nezu": "还不错嘛！"},
+                    visual_description=f"All characters celebrating",
+                    characters=all_chars,
+                    character_emotions={c: "happy" for c in all_chars},
+                    dialogue={c2: "原来如此！", c1: "做得好！"},
                     background="festive background with sparkles"
                 )
             ]
@@ -804,28 +914,76 @@ Requirements:
 
 # 保留 CharacterLibrary 用于参考图片加载（如果需要）
 class CharacterLibrary:
-    """角色库 - 主要用于加载参考图片"""
-
-    # Kumomo 原创角色 - 直接使用 kumo, nezu, papi 作为名字
-    KUMOMO_CHARACTERS = {
-        "kumo": "kumo",   # 云朵 - 好奇的学生
-        "nezu": "nezu",   # 刺猬 - 怀疑论者
-        "papi": "papi",   # 小狗 - 导师教授
-    }
-
-    # Kumomo 角色对应的参考图片文件 - 顺序必须与 prompt 一致
-    # Image 1: kumo (云朵), Image 2: nezu (刺猬), Image 3: papi (小狗)
-    KUMOMO_IMAGES_ORDERED = [
-        ("kumo", "kumo.jpeg"),   # 云朵 - 好奇的学生
-        ("nezu", "nezu.jpeg"),   # 刺猬 - 怀疑论者
-        ("papi", "papi.jpeg"),   # 小狗 - 导师教授
-    ]
-    # 保留 dict 用于快速查找
-    KUMOMO_IMAGES = {name: file for name, file in KUMOMO_IMAGES_ORDERED}
+    """角色库 - 动态从 character_images 目录加载原创角色"""
 
     def __init__(self):
         self.image_base_path = Path(__file__).parent.parent.parent / "config" / "character_images"
+        self._load_kumomo_characters()
         self._load_config()
+
+    def _load_kumomo_characters(self):
+        """
+        从 character_images 目录动态加载原创角色
+
+        文件命名格式: "数字. 角色名.扩展名"
+        例如: "1. papi.jpeg", "2. kumo.png"
+
+        角色分工按数字顺序:
+        - 1 = 教授/导师 (mentor)
+        - 2 = 学生 (student)
+        - 3 = 质疑者 (skeptic)
+        """
+        import re
+
+        self.kumomo_characters = {}  # name -> name
+        self.kumomo_images_ordered = []  # [(name, filename), ...]
+        self.kumomo_images = {}  # name -> filename
+        self.kumomo_roles = {}  # name -> role
+
+        # 角色分工映射
+        role_map = {1: "mentor", 2: "student", 3: "skeptic"}
+
+        if not self.image_base_path.exists():
+            print(f"[CharacterLibrary] Warning: {self.image_base_path} does not exist")
+            return
+
+        # 扫描目录中的图片文件
+        image_extensions = {'.jpeg', '.jpg', '.png', '.webp'}
+        image_files = [
+            f for f in self.image_base_path.iterdir()
+            if f.is_file() and f.suffix.lower() in image_extensions
+        ]
+
+        # 解析文件名并排序
+        parsed_chars = []
+        for img_file in image_files:
+            filename = img_file.name
+            stem = img_file.stem
+
+            # 尝试解析 "数字. 角色名" 格式
+            match = re.match(r'^(\d+)\.\s*(.+)$', stem)
+            if match:
+                order = int(match.group(1))
+                char_name = match.group(2).strip().lower()
+            else:
+                # 没有数字前缀，按文件名排序
+                order = 999
+                char_name = stem.lower()
+
+            role = role_map.get(order, "character")
+            parsed_chars.append((order, char_name, filename, role))
+
+        # 按数字排序
+        parsed_chars.sort(key=lambda x: x[0])
+
+        for order, char_name, filename, role in parsed_chars:
+            self.kumomo_characters[char_name] = char_name
+            self.kumomo_images_ordered.append((char_name, filename))
+            self.kumomo_images[char_name] = filename
+            self.kumomo_roles[char_name] = role
+
+        char_info = [(name, self.kumomo_roles[name]) for name, _ in self.kumomo_images_ordered]
+        print(f"[CharacterLibrary] Loaded {len(self.kumomo_characters)} characters: {char_info}")
 
     def _load_config(self):
         """加载角色配置"""
@@ -846,10 +1004,10 @@ class CharacterLibrary:
         char_name_lower = char_name.lower()
 
         # 检查是否是 kumomo 原创角色
-        normalized_name = self.KUMOMO_CHARACTERS.get(char_name_lower)
+        normalized_name = self.kumomo_characters.get(char_name_lower)
         if normalized_name:
             # 使用 kumomo 原创角色的参考图片
-            img_filename = self.KUMOMO_IMAGES.get(normalized_name)
+            img_filename = self.kumomo_images.get(normalized_name)
             if img_filename:
                 full_path = self.image_base_path / img_filename
                 if full_path.exists():
@@ -878,16 +1036,26 @@ class CharacterLibrary:
 
     def get_all_kumomo_reference_images(self) -> List[str]:
         """
-        获取所有 kumomo 原创角色的参考图片（保持顺序）
-
-        返回顺序: kumo, nezu, papi (与 prompt 中的 Image 1/2/3 对应)
+        获取所有原创角色的参考图片（按文件名排序）
         """
         image_paths = []
-        for char_name, img_filename in self.KUMOMO_IMAGES_ORDERED:
+        for char_name, img_filename in self.kumomo_images_ordered:
             full_path = self.image_base_path / img_filename
             if full_path.exists():
                 image_paths.append(str(full_path))
         return image_paths
+
+    def get_kumomo_character_names(self) -> List[str]:
+        """获取所有原创角色名称（按顺序）"""
+        return [name for name, _ in self.kumomo_images_ordered]
+
+    def get_kumomo_character_role(self, char_name: str) -> str:
+        """获取角色的分工 (mentor/student/skeptic)"""
+        return self.kumomo_roles.get(char_name.lower(), "character")
+
+    def get_kumomo_characters_with_roles(self) -> List[tuple]:
+        """获取所有角色及其分工 [(name, role), ...]"""
+        return [(name, self.kumomo_roles.get(name, "character")) for name, _ in self.kumomo_images_ordered]
 
     def get_all_reference_images_for_panel(
         self,
@@ -928,7 +1096,13 @@ _storyboarder: Optional[Storyboarder] = None
 # v11: Simplified prompts - minimal text descriptions, let model focus on reference image files
 # v12: Enhanced validation with CoT (Chain-of-Thought), dynamic ref loading, character mapping
 # v13: Ultra-simple prompts: "[papi looks like this: papi.jpeg]" - let model focus on images
-CACHE_VERSION = 13
+# v14: Fix temperature hardcoded to 1.0 in API, explicit image order in prompt
+# v15: Dynamic character loading from character_images directory
+# v16: Character roles from filename prefix (1.=mentor, 2.=student, 3.=skeptic)
+# v17: Enforce dialogue length limits (40 chars CJK, 100 chars EN) to fit speech bubbles
+# v18: Fix dialogue parsing - apostrophes in contractions (don't, aren't) were causing truncation
+# v19: Translate ALL text fields (dialogue + narration + title), not just dialogue
+CACHE_VERSION = 19
 
 # Simple storyboard cache (text hash -> storyboard)
 _storyboard_cache: Dict[str, Storyboard] = {}
