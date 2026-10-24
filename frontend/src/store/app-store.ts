@@ -1,89 +1,88 @@
 import { create } from "zustand";
-import type { MangaResponse, StoryboardResponse } from "@/lib/api";
+import type { JobLanguage, JobLayout, JobPanelRange, JobState, JobTheme } from "@/lib/api";
 
-export type AppStage =
-  | "idle"
-  | "uploading"
-  | "parsing"
-  | "generating-storyboard"
-  | "generating-manga"
-  | "completed"
-  | "error";
+export type MangaTheme = JobTheme;
+export type Language = JobLanguage;
+export type PanelLayout = JobLayout;
+export type PanelRange = JobPanelRange;
 
-export type MangaTheme =
-  | "kumomo"  // Original characters (recommended while IP negotiation pending)
-  | "chiikawa"
-  | "ghibli";
-
-export type Language = "en-US" | "zh-CN" | "ja-JP";
-
-interface AppState {
-  // Current stage
-  stage: AppStage;
-  error: string | null;
-
-  // File related
-  file: File | null;
-  extractedText: string;
-  textPreview: string;
-
-  // Generation settings
+/** Options sent with `POST /api/jobs`. */
+export interface GenerationOptions {
   mangaTheme: MangaTheme;
-  numPanels: number;
   language: Language;
-  title: string;
+  layout: PanelLayout;
+  qa: boolean;
+  panelRange: PanelRange;
+  fast: boolean;
+}
 
-  // Generation results
-  storyboard: StoryboardResponse | null;
-  manga: MangaResponse | null;
+interface AppState extends GenerationOptions {
+  /** The PDF picked in the dropzone. */
+  file: File | null;
+  /** PDFs of jobs created in this tab (in memory only), so a failed job can be retried. */
+  jobFiles: Record<string, File>;
 
   // Settings panel
   isSettingsOpen: boolean;
 
   // Actions
-  setStage: (stage: AppStage) => void;
-  setError: (error: string | null) => void;
   setFile: (file: File | null) => void;
-  setExtractedText: (text: string, preview?: string) => void;
-  setMangaTheme: (theme: MangaTheme) => void;
-  setNumPanels: (num: number) => void;
+  rememberJobFile: (jobId: string, file: File) => void;
   setLanguage: (lang: Language) => void;
-  setTitle: (title: string) => void;
-  setStoryboard: (storyboard: StoryboardResponse | null) => void;
-  setManga: (manga: MangaResponse | null) => void;
+  setLayout: (layout: PanelLayout) => void;
+  setQa: (qa: boolean) => void;
+  setPanelRange: (range: PanelRange) => void;
+  setFast: (fast: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
+  /** Pre-fill the options from an existing job (used by "try again"). */
+  applyJobOptions: (job: Pick<JobState, "theme" | "language" | "layout">) => void;
+  /** Forget the picked file; keeps the user's option choices. */
+  clearFile: () => void;
   reset: () => void;
 }
 
+export const DEFAULT_OPTIONS: GenerationOptions = {
+  mangaTheme: "kumomo",
+  language: "en-US",
+  layout: "single",
+  qa: true,
+  panelRange: "auto",
+  fast: false,
+};
+
 const initialState = {
-  stage: "idle" as AppStage,
-  error: null,
+  ...DEFAULT_OPTIONS,
   file: null,
-  extractedText: "",
-  textPreview: "",
-  mangaTheme: "kumomo" as MangaTheme,
-  numPanels: 6,
-  language: "en-US" as Language,
-  title: "",
-  storyboard: null,
-  manga: null,
+  jobFiles: {},
   isSettingsOpen: false,
 };
 
 export const useAppStore = create<AppState>((set) => ({
   ...initialState,
 
-  setStage: (stage) => set({ stage }),
-  setError: (error) => set({ error, stage: error ? "error" : "idle" }),
   setFile: (file) => set({ file }),
-  setExtractedText: (text, preview) =>
-    set({ extractedText: text, textPreview: preview || text.slice(0, 500) }),
-  setMangaTheme: (mangaTheme) => set({ mangaTheme }),
-  setNumPanels: (numPanels) => set({ numPanels }),
+  rememberJobFile: (jobId, file) => set((s) => ({ jobFiles: { ...s.jobFiles, [jobId]: file } })),
   setLanguage: (language) => set({ language }),
-  setTitle: (title) => set({ title }),
-  setStoryboard: (storyboard) => set({ storyboard }),
-  setManga: (manga) => set({ manga }),
+  setLayout: (layout) => set({ layout }),
+  setQa: (qa) => set({ qa }),
+  setPanelRange: (panelRange) => set({ panelRange }),
+  setFast: (fast) => set({ fast }),
   setSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
+  applyJobOptions: (job) =>   // kumomo is the only cast: an older job may name a theme that no longer exists
+    set({ mangaTheme: "kumomo", language: job.language, layout: job.layout }),
+  clearFile: () => set({ file: null }),
   reset: () => set(initialState),
 }));
+
+/** Multipart body for `POST /api/jobs`. */
+export function buildJobForm(file: File, options: GenerationOptions): FormData {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("theme", options.mangaTheme);
+  form.append("language", options.language);
+  form.append("layout", options.layout);
+  form.append("qa", String(options.qa));
+  form.append("panel_range", options.panelRange);
+  form.append("fast", String(options.fast));
+  return form;
+}

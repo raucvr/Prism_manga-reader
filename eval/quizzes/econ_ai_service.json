@@ -1,0 +1,52 @@
+[
+ {
+  "id": "E1",
+  "q": "When AI voice agents are deployed in high-volume contact centers, how can firms divide leads between AI and human workers?",
+  "a": "route low-intent leads to AI and allocate high-intent leads to human workers"
+ },
+ {
+  "id": "E2",
+  "q": "Drawing on sequential search theory, the authors posit that AI-induced task allocation raises something for human workers, making them less willing to persist. What does it raise?",
+  "a": "their reservation value for continuing with the lead in hand"
+ },
+ {
+  "id": "E3",
+  "q": "Studying an AI voice-agent deployment at a Chinese online health-insurance brokerage, how many customer outreach records surrounding the rollout do the authors use?",
+  "a": "more than a half million"
+ },
+ {
+  "id": "E4",
+  "q": "Which research design do the authors adopt to trace how worker behavior changes across the workday?",
+  "a": "a regression-discontinuity-in-time design"
+ },
+ {
+  "id": "E5",
+  "q": "On a worker's first three calls of the workday, by about how much does the AI deployment change the probability that a call is a high-intent lead?",
+  "a": "it raises it by about 23 percentage points"
+ },
+ {
+  "id": "E6",
+  "q": "On a worker's first three calls of the workday, by about how much does customer acquisition by human workers change?",
+  "a": "it falls by about 5 percentage points"
+ },
+ {
+  "id": "E7",
+  "q": "Consistent with the theorized mechanism, how does the rate at which workers reallocate their earliest leads change?",
+  "a": "it rises: they reallocate those leads about 8 percentage points more often"
+ },
+ {
+  "id": "E8",
+  "q": "How does the length of workers' calls with their earliest leads change?",
+  "a": "those calls get about 13% shorter"
+ },
+ {
+  "id": "E9",
+  "q": "What does the calibrated decomposition analysis show?",
+  "a": "the modest gain from improved lead ordering is outweighed by a much larger negative behavioral response"
+ },
+ {
+  "id": "E10",
+  "q": "Beyond workload and congestion, what do the authors highlight as an important service operations state variable?",
+  "a": "opportunity distribution"
+ }
+]

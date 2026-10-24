@@ -1,0 +1,52 @@
+[
+ {
+  "id": "G1",
+  "q": "Gating mechanisms have been widely used, from early models like LSTMs and Highway Networks to recent state space models, linear attention, and softmax attention. Yet what does existing literature rarely examine?",
+  "a": "the specific effects of gating"
+ },
+ {
+  "id": "G2",
+  "q": "To systematically investigate gating-augmented softmax attention, how many variants do the authors compare?",
+  "a": "over 30 variants"
+ },
+ {
+  "id": "G3",
+  "q": "What size are the Mixture-of-Experts (MoE) models the authors train for this comparison?",
+  "a": "15B"
+ },
+ {
+  "id": "G4",
+  "q": "What size are the dense models the authors train for this comparison?",
+  "a": "1.7B"
+ },
+ {
+  "id": "G5",
+  "q": "How large is the dataset the models are trained on?",
+  "a": "a 3.5 trillion token dataset"
+ },
+ {
+  "id": "G6",
+  "q": "The authors' central finding is that one simple modification consistently improves performance. What is it?",
+  "a": "applying a head-specific sigmoid gate after the Scaled Dot-Product Attention (SDPA)"
+ },
+ {
+  "id": "G7",
+  "q": "This modification also enhances training stability and improves scaling properties. What does it tolerate?",
+  "a": "larger learning rates"
+ },
+ {
+  "id": "G8",
+  "q": "By comparing various gating positions and computational variants, the authors attribute the modification's effectiveness to two key factors. One concerns the low-rank mapping in the softmax attention: what does the gate introduce upon it?",
+  "a": "non-linearity"
+ },
+ {
+  "id": "G9",
+  "q": "Besides the factor concerning the low-rank mapping in the softmax attention, what is the other key factor to which the authors attribute the modification's effectiveness?",
+  "a": "applying query-dependent sparse gating scores to modulate the SDPA output"
+ },
+ {
+  "id": "G10",
+  "q": "Notably, the authors find that the gating mechanism mitigates ‘attention sink’. What kind of performance does it also enhance?",
+  "a": "long-context extrapolation performance"
+ }
+]

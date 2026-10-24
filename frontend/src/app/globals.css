@@ -12,11 +12,23 @@
   --secondary: #7CD1FD;
   --secondary-foreground: #4A4A4A;
   --muted: #F0F0F0;
-  --muted-foreground: #888888;
+  --muted-foreground: #6B6B6B;
   --accent: #FFE4D6;
   --accent-foreground: #4A4A4A;
   --border: #E8E0F0;
   --radius: 1rem;
+  /* Height of the compact top bar shown above the reader */
+  --appbar-h: 3.5rem;
+}
+
+/* Calm mode (reader setting): muted background, no decorative colour */
+html[data-calm="true"] {
+  --background: #F5F4F1;
+}
+
+html[data-calm="true"] .page-decor {
+  filter: grayscale(1);
+  opacity: 0.25;
 }
 
 * {
@@ -27,9 +39,12 @@
 
 html,
 body {
-  max-width: 100vw;
+  max-width: 100%;
+  /* "clip" (not "hidden") so body doesn't become a scroll container and
+     position: sticky keeps working; "hidden" is the fallback for old browsers. */
   overflow-x: hidden;
-  font-family: var(--font-noto), "Noto Sans SC", sans-serif;
+  overflow-x: clip;
+  font-family: var(--font-inter, ui-sans-serif), "Noto Sans SC", system-ui, sans-serif;
 }
 
 body {
@@ -57,10 +72,10 @@ body {
   background: #f48a9c;
 }
 
-/* 选中文本颜色 */
+/* 选中文本颜色 (dark text keeps selected dialogue readable) */
 ::selection {
   background: var(--primary);
-  color: white;
+  color: var(--foreground);
 }
 
 /* 漫画面板样式 */
@@ -125,4 +140,56 @@ body {
 
 .loading-dot:nth-child(3) {
   animation-delay: 0.4s;
+}
+
+/* ---------- Reader ---------- */
+
+/* Focus mode fills the viewport below the compact top bar */
+.reader-focus {
+  height: calc(100vh - var(--appbar-h));
+  height: calc(100dvh - var(--appbar-h));
+  min-height: 30rem;
+}
+
+/* "Drawing…" placeholder shimmer */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 150% 0;
+  }
+  100% {
+    background-position: -50% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background-image: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 30%,
+    rgba(255, 255, 255, 0.65) 50%,
+    rgba(255, 255, 255, 0) 70%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+}
+
+/* ---------- Reduced motion: calm mode or the OS setting ---------- */
+
+html[data-calm="true"] *,
+html[data-calm="true"] *::before,
+html[data-calm="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

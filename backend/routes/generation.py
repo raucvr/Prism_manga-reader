@@ -1,11 +1,11 @@
 """
 Generation API Routes
-文本和图像生成接口
+文本和图像生成接口（直接调用付费模型；界面不使用，默认关闭：config 中 server.enable_generate_api）
 """
 
 import base64
 from typing import Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from config_loader import get_config
 from engines import (
     get_client,
     get_text_engine,
@@ -24,7 +25,18 @@ from engines import (
 )
 
 
-router = APIRouter()
+def require_generate_api() -> None:
+    """Answer 404 unless server.enable_generate_api is on (read per request, so a config hot reload applies at once).
+
+    These routes are raw, paid model calls that the web UI never makes. They stay off unless the user turns them on,
+    because while on, anything that can reach the backend can spend the user's balance through them.
+    """
+    if not get_config().generate_api_enabled:
+        raise HTTPException(status_code=404, detail="/api/generate is disabled. Set server.enable_generate_api: true "
+                                                    "in config/api_config.yaml to use it.")
+
+
+router = APIRouter(dependencies=[Depends(require_generate_api)])
 
 
 # ==================== 请求/响应模型 ====================
@@ -109,9 +121,12 @@ async def generate_text_stream(request: TextGenerationRequest):
         )
 
         async def stream_generator():
-            async for chunk in engine.generate_text_stream(messages, config):
-                yield f"data: {chunk}\n\n"
-            yield "data: [DONE]\n\n"
+            try:
+                async for chunk in engine.generate_text_stream(messages, config):
+                    yield f"data: {chunk}\n\n"
+                yield "data: [DONE]\n\n"
+            finally:
+                await engine.close()
 
         return StreamingResponse(
             stream_generator(),

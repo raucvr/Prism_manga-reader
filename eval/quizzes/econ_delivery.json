@@ -1,0 +1,52 @@
+[
+ {
+  "id": "D1",
+  "q": "What fueled the immense growth of last-mile delivery (LMD) firms over the last two decades?",
+  "a": "the success of e-commerce"
+ },
+ {
+  "id": "D2",
+  "q": "Operating on thin margins, LMD firms strive for successful first-time deliveries. What do they want to avoid by doing so?",
+  "a": "the financial and reputational costs of reattempts"
+ },
+ {
+  "id": "D3",
+  "q": "Which three things do Delivery Agents (DAs) influence, making them integral to LMD efficiency?",
+  "a": "customer experience, delivery success, and productivity"
+ },
+ {
+  "id": "D4",
+  "q": "Most LMD performance-enhancement research focuses on process, technology, and incentives. What do these approaches presume?",
+  "a": "that workers will conform to procedures and monitoring tools will function flawlessly"
+ },
+ {
+  "id": "D5",
+  "q": "In practice, DAs deviate from expected behaviors, i.e., indulge in misconduct, which negatively affects delivery efficiency. What does it often result in?",
+  "a": "returned parcels"
+ },
+ {
+  "id": "D6",
+  "q": "One major misconduct is illustrated by a DA who, even without reaching a delivery address, notes ‘customer unavailable’ and records a delivery failure. What is this misconduct called?",
+  "a": "fake remarked deliveries"
+ },
+ {
+  "id": "D7",
+  "q": "Collaborating with a leading Indian LMD firm and using instrumental variable regression, what do the authors find such misconduct leads to?",
+  "a": "a spillover productivity loss"
+ },
+ {
+  "id": "D8",
+  "q": "By how much does the effect of such misconduct reduce the next day’s successful deliveries?",
+  "a": "by 1.60%"
+ },
+ {
+  "id": "D9",
+  "q": "By how much does the effect of such misconduct reduce the next day’s first-time-right deliveries?",
+  "a": "by 1.86%"
+ },
+ {
+  "id": "D10",
+  "q": "Besides discussing misconduct’s correlation with factors such as task complexity, into what do the authors offer novel insights?",
+  "a": "how opportunistic circumstances can influence worker behavior"
+ }
+]

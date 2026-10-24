@@ -1,0 +1,47 @@
+[
+ {
+  "id": "B1",
+  "q": "What makes training deep neural networks complicated, according to the paper?",
+  "a": "the distribution of each layer's inputs changes during training as the parameters of earlier layers change"
+ },
+ {
+  "id": "B2",
+  "q": "What do the authors call this phenomenon?",
+  "a": "internal covariate shift"
+ },
+ {
+  "id": "B3",
+  "q": "What practical problems does it cause?",
+  "a": "slower training: lower learning rates and careful initialization are needed, and saturating nonlinearities are hard to train"
+ },
+ {
+  "id": "B4",
+  "q": "How does the paper address it?",
+  "a": "by normalizing layer inputs as part of the model architecture, for each training mini-batch"
+ },
+ {
+  "id": "B5",
+  "q": "What does Batch Normalization allow during training?",
+  "a": "much higher learning rates and less careful initialization"
+ },
+ {
+  "id": "B6",
+  "q": "What other effect does it have?",
+  "a": "it acts as a regularizer, in some cases eliminating the need for Dropout"
+ },
+ {
+  "id": "B7",
+  "q": "What happened when it was applied to a state-of-the-art image classifier?",
+  "a": "the same accuracy with 14 times fewer training steps, and it beat the original model by a significant margin"
+ },
+ {
+  "id": "B8",
+  "q": "What ImageNet result did an ensemble of batch-normalized networks reach?",
+  "a": "4.9% top-5 validation error (4.8% test error), better than the best published result"
+ },
+ {
+  "id": "B9",
+  "q": "How does that compare with humans?",
+  "a": "it exceeds the accuracy of human raters"
+ }
+]

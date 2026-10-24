@@ -1,0 +1,52 @@
+[
+ {
+  "id": "F1",
+  "q": "Diffusion Large Language Models (dLLMs) enable token generation in arbitrary orders. Which rigid constraint of traditional LLMs do they break?",
+  "a": "the left-to-right constraint"
+ },
+ {
+  "id": "F2",
+  "q": "Intuitively, how does the solution space of arbitrary-order generation relate to the fixed autoregressive trajectory?",
+  "a": "it strictly supersets the fixed autoregressive trajectory"
+ },
+ {
+  "id": "F3",
+  "q": "Intuitively, what should the order flexibility of dLLMs theoretically unlock?",
+  "a": "superior reasoning potential"
+ },
+ {
+  "id": "F4",
+  "q": "For general reasoning tasks such as mathematics and coding, what do the authors find arbitrary order generation may in fact do?",
+  "a": "limit the reasoning potential of dLLMs"
+ },
+ {
+  "id": "F5",
+  "q": "What do dLLMs tend to exploit their order flexibility to do?",
+  "a": "bypass high-uncertainty tokens that are crucial for exploration"
+ },
+ {
+  "id": "F6",
+  "q": "What can dLLMs' exploitation of their order flexibility lead to?",
+  "a": "a premature collapse of solution coverage"
+ },
+ {
+  "id": "F7",
+  "q": "The authors' observation motivates a rethink of reinforcement learning (RL) approaches for dLLMs, where considerable complexities are often devoted to preserving the order flexibility. What examples of these complexities do the authors give?",
+  "a": "handling combinatorial trajectories and intractable likelihoods"
+ },
+ {
+  "id": "F8",
+  "q": "Along with applying standard Group Relative Policy Optimization (GRPO), what do the authors simply do to elicit effective reasoning?",
+  "a": "forgo arbitrary order"
+ },
+ {
+  "id": "F9",
+  "q": "The authors' minimalist approach, JustGRPO, is surprisingly effective. What accuracy does it reach on GSM8K?",
+  "a": "89.1%"
+ },
+ {
+  "id": "F10",
+  "q": "Which ability of dLLMs does JustGRPO fully retain?",
+  "a": "their parallel decoding ability"
+ }
+]

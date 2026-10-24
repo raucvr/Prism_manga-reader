@@ -54,7 +54,8 @@ class NanoBananaEngine(BaseEngine):
         if self._client is None or self._client.is_closed:
             self._client = httpx.AsyncClient(
                 timeout=httpx.Timeout(120.0, connect=10.0),
-                headers={"Content-Type": "application/json"}
+                # the key in a header, never in the URL: an HTTP error's message carries the URL into job.json and logs
+                headers={"Content-Type": "application/json", "x-goog-api-key": self.api_key}
             )
         return self._client
 
@@ -116,14 +117,13 @@ class NanoBananaEngine(BaseEngine):
         client = await self._get_client()
 
         url = f"{self.base_url}/models/{self.model}:generateContent"
-        params = {"key": self.api_key}
 
         payload = {
             "contents": self._build_contents(messages),
             "generationConfig": self._build_generation_config(config)
         }
 
-        response = await client.post(url, params=params, json=payload)
+        response = await client.post(url, json=payload)
         response.raise_for_status()
         data = response.json()
 
@@ -159,7 +159,7 @@ class NanoBananaEngine(BaseEngine):
         client = await self._get_client()
 
         url = f"{self.base_url}/models/{self.model}:streamGenerateContent"
-        params = {"key": self.api_key, "alt": "sse"}
+        params = {"alt": "sse"}
 
         payload = {
             "contents": self._build_contents(messages),
@@ -197,7 +197,6 @@ class NanoBananaEngine(BaseEngine):
 
         # 使用当前配置的模型（应该是图像生成模型）
         url = f"{self.base_url}/models/{self.model}:generateContent"
-        params = {"key": self.api_key}
 
         # 构建提示词，强调漫画风格
         style_prompt = self._build_manga_prompt(prompt, config)
@@ -224,7 +223,7 @@ class NanoBananaEngine(BaseEngine):
             }
         }
 
-        response = await client.post(url, params=params, json=payload)
+        response = await client.post(url, json=payload)
         response.raise_for_status()
         data = response.json()
 
@@ -261,7 +260,6 @@ class NanoBananaEngine(BaseEngine):
         style_map = {
             "full_color_manga": "full color manga style, vibrant colors, clean lines",
             "black_white_manga": "black and white manga style, high contrast, screentone shading",
-            "chiikawa": "Chiikawa style, cute characters, soft pastel colors, simple round shapes",
             "watercolor": "watercolor manga style, soft edges, flowing colors"
         }
 

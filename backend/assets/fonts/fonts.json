@@ -1,0 +1,109 @@
+{
+  "about": "Fonts bundled with Prism so that every OS letters the manga with the same files. services/fonts.py reads this manifest: roles name the file (and face index) of each role, files pin each file's source and SHA-256. Licenses: LICENSES/ and THIRD_PARTY_NOTICES.md. Every file is the unmodified upstream release.",
+  "roles": {
+    "zh": {
+      "text": [
+        "ChillRoundM.otf",
+        0
+      ],
+      "bold": [
+        "ChillRoundM.otf",
+        0
+      ]
+    },
+    "en": {
+      "text": [
+        "Shantell_Sans-Normal-Medium.otf",
+        0
+      ],
+      "bold": [
+        "Shantell_Sans-Normal-Bold.otf",
+        0
+      ]
+    },
+    "digits": {
+      "text": [
+        "AtkinsonHyperlegibleNext-Regular.ttf",
+        0
+      ],
+      "bold": [
+        "AtkinsonHyperlegibleNext-Bold.ttf",
+        0
+      ]
+    },
+    "symbols": {
+      "text": [
+        "DejaVuSans.ttf",
+        0
+      ],
+      "bold": [
+        "DejaVuSans.ttf",
+        0
+      ]
+    }
+  },
+  "files": {
+    "ChillRoundM.otf": {
+      "family": "ChillRound M",
+      "version": "1.805",
+      "license": "OFL-1.1 (Reserved Font Name: ChillRoundM; the file is unmodified)",
+      "license_file": "LICENSES/OFL-ChillRound.txt",
+      "source": "https://github.com/Warren2060/ChillRound/releases/download/v1.805/ChillRoundM_v1.805.zip",
+      "source_sha256": "197018fdce5436fc99d8874d32c5b4702b2cc595006d2d341fb3542b6b5779bd",
+      "path_in_source": "ChillRoundM_v1.805/ChillRoundM.otf",
+      "bytes": 4764200,
+      "sha256": "2c8da065414e3cab951744f15c25b17a9ab4ae93e48def22004bc917550d1219"
+    },
+    "Shantell_Sans-Normal-Medium.otf": {
+      "family": "Shantell Sans Normal",
+      "version": "1.011",
+      "license": "OFL-1.1",
+      "license_file": "LICENSES/OFL-ShantellSans.txt",
+      "source": "https://github.com/arrowtype/shantell-sans/releases/download/1.011/Shantell_Sans_1.011.zip",
+      "source_sha256": "7562b90399eae6339f89079c917235823fca1cabda3bab624bbacaefa7abe558",
+      "path_in_source": "Shantell Sans 1.011/Desktop/Static/Shantell_Sans-Normal-Medium.otf",
+      "bytes": 273340,
+      "sha256": "97faf292b154159d61a321e48116fd05844c65b5433f6a3c05690c9fe966456b"
+    },
+    "Shantell_Sans-Normal-Bold.otf": {
+      "family": "Shantell Sans Normal",
+      "version": "1.011",
+      "license": "OFL-1.1",
+      "license_file": "LICENSES/OFL-ShantellSans.txt",
+      "source": "https://github.com/arrowtype/shantell-sans/releases/download/1.011/Shantell_Sans_1.011.zip",
+      "source_sha256": "7562b90399eae6339f89079c917235823fca1cabda3bab624bbacaefa7abe558",
+      "path_in_source": "Shantell Sans 1.011/Desktop/Static/Shantell_Sans-Normal-Bold.otf",
+      "bytes": 261572,
+      "sha256": "7b446a4d2f0e31d08692339cf019b3321e612a6dd28bd679979fad809548ed2c"
+    },
+    "AtkinsonHyperlegibleNext-Regular.ttf": {
+      "family": "Atkinson Hyperlegible Next",
+      "version": "2.001",
+      "license": "OFL-1.1",
+      "license_file": "LICENSES/OFL-AtkinsonHyperlegibleNext.txt",
+      "source": "https://raw.githubusercontent.com/googlefonts/atkinson-hyperlegible-next/7925f50f649b3813257faf2f4c0b381011f434f1/fonts/ttf/AtkinsonHyperlegibleNext-Regular.ttf",
+      "bytes": 65068,
+      "sha256": "88ed5c31a71584c7772963b02d04bef1eb7e3d2e9c8b9cb204339b1f82cf432c"
+    },
+    "AtkinsonHyperlegibleNext-Bold.ttf": {
+      "family": "Atkinson Hyperlegible Next",
+      "version": "2.001",
+      "license": "OFL-1.1",
+      "license_file": "LICENSES/OFL-AtkinsonHyperlegibleNext.txt",
+      "source": "https://raw.githubusercontent.com/googlefonts/atkinson-hyperlegible-next/7925f50f649b3813257faf2f4c0b381011f434f1/fonts/ttf/AtkinsonHyperlegibleNext-Bold.ttf",
+      "bytes": 66792,
+      "sha256": "994414047df66bb4998d01c1cb1eeb4a2ddc4622d1aa56bbb8adbeca7645b041"
+    },
+    "DejaVuSans.ttf": {
+      "family": "DejaVu Sans",
+      "version": "2.37",
+      "license": "Bitstream Vera Fonts license + Arev Fonts license (DejaVu changes: public domain)",
+      "license_file": "LICENSES/LICENSE-DejaVu.txt",
+      "source": "https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-sans-ttf-2.37.zip",
+      "source_sha256": "5c6e497a2f36552cb5ffb112c413a6af39c0f3c47653662b90b4fa6499822fd7",
+      "path_in_source": "dejavu-sans-ttf-2.37/ttf/DejaVuSans.ttf",
+      "bytes": 757076,
+      "sha256": "7da195a74c55bef988d0d48f9508bd5d849425c1770dba5d7bfc6ce9ed848954"
+    }
+  }
+}

@@ -13,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config_loader import get_config
 from engines import reset_client
-from services.manga_generator import reset_manga_generator
 
 
 router = APIRouter()
@@ -106,10 +105,10 @@ async def reload_config():
     try:
         # 重置所有缓存的实例
         await reset_client()
-        reset_manga_generator()
-        # 重新加载配置
-        config = get_config()
-        config.reload()
-        return {"status": "success", "message": "Configuration reloaded"}
+        # 重新加载配置（失败时保留旧配置并返回 False）
+        reloaded = get_config().reload()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    if not reloaded:
+        raise HTTPException(status_code=500, detail="Config reload failed (see the server log); the previous configuration is still active")
+    return {"status": "success", "message": "Configuration reloaded"}

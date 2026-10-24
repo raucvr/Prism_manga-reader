@@ -1,28 +1,29 @@
-# Nano Banana Station - Python Dependencies
+# Prism - Python dependencies (Python 3.10+; start.sh / start.ps1 install them into .venv)
+#   uv pip install --python .venv/bin/python -r requirements.txt
+# Tests need requirements-dev.txt as well. Upper bounds keep a fresh install from jumping to an untested major version.
 
-# Web Framework
-fastapi>=0.109.0
-uvicorn[standard]>=0.27.0
-python-multipart>=0.0.6
+# Web Framework (floors past published security advisories, also for FastAPI's starlette)
+fastapi>=0.109.0,<1
+starlette>=0.49.1
+uvicorn[standard]>=0.27.0,<1
+python-multipart>=0.0.18,<1
 
 # HTTP Client
-httpx>=0.26.0
+httpx>=0.26.0,<1
 
 # Configuration
-pyyaml>=6.0.1
-watchdog>=3.0.0
+pyyaml>=6.0.1,<7
+watchdog>=3.0.0,<7
 
-# PDF Processing
-pypdf>=3.17.0
-pdfplumber>=0.10.3
+# PDF Processing (PyMuPDF is the primary extractor; pdfplumber is the fallback)
+# PyMuPDF 2.x pulls in onnxruntime and has no wheels for Intel Macs, Windows on ARM or musl Linux
+pymupdf>=1.26,<2
+pdfplumber>=0.10.3,<1
+pdfminer.six>=20251107       # pdfplumber's parser
 
-# AI/ML
-langchain>=0.1.0
-langchain-core>=0.1.0
-
-# Image Processing
-pillow>=10.2.0
+# Image Processing (numpy: the v3 lettering and art checks measure the art)
+pillow>=10.3.0,<14
+numpy>=1.26,<3
 
 # Utilities
-python-dotenv>=1.0.0
-pydantic>=2.5.0
+pydantic>=2.5.0,<3

@@ -1,62 +1,69 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Settings, X, Check, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useAppStore, Language } from "@/store/app-store";
-import { api, ConfigResponse } from "@/lib/api";
+import { useAppStore } from "@/store/app-store";
+import { api, describeError, type ConfigResponse } from "@/lib/api";
 
-const languages: { id: Language; name: string; flag: string }[] = [
-  { id: "en-US", name: "English", flag: "🇺🇸" },
-  { id: "zh-CN", name: "中文", flag: "🇨🇳" },
-  { id: "ja-JP", name: "日本語", flag: "🇯🇵" },
-];
+interface SettingsPanelProps {
+  /** Show the floating gear button (pages with their own settings button pass false). */
+  showTrigger?: boolean;
+}
 
-export function SettingsPanel() {
-  const {
-    isSettingsOpen,
-    setSettingsOpen,
-    language,
-    setLanguage,
-  } = useAppStore();
+export function SettingsPanel({ showTrigger = true }: SettingsPanelProps) {
+  const isSettingsOpen = useAppStore((s) => s.isSettingsOpen);
+  const setSettingsOpen = useAppStore((s) => s.setSettingsOpen);
 
   const [config, setConfig] = useState<ConfigResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    if (isSettingsOpen && !config) {
-      loadConfig();
-    }
-  }, [isSettingsOpen]);
-
-  const loadConfig = async () => {
+  const loadConfig = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const data = await api.getConfig();
-      setConfig(data);
-    } catch (error) {
-      console.error("Failed to load config:", error);
+      setConfig(await api.getConfig());
+    } catch (err) {
+      setError(describeError(err));
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (isSettingsOpen && !config) void loadConfig();
+  }, [isSettingsOpen, config, loadConfig]);
+
+  // Escape closes; focus moves into the panel when it opens.
+  useEffect(() => {
+    if (!isSettingsOpen) return;
+    closeRef.current?.focus();
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSettingsOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isSettingsOpen, setSettingsOpen]);
 
   return (
     <>
-      {/* Settings button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => setSettingsOpen(true)}
-        className="fixed top-4 right-4 z-40"
-      >
-        <Settings className="w-5 h-5" />
-      </Button>
+      {showTrigger && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setSettingsOpen(true)}
+          className="fixed right-4 top-4 z-40 bg-white/70 shadow-sm backdrop-blur"
+          aria-label="Open settings"
+        >
+          <Settings className="h-5 w-5" aria-hidden="true" />
+        </Button>
+      )}
 
-      {/* Settings panel */}
       <AnimatePresence>
         {isSettingsOpen && (
           <>
@@ -65,130 +72,91 @@ export function SettingsPanel() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/30 z-40"
+              className="fixed inset-0 z-40 bg-black/30"
               onClick={() => setSettingsOpen(false)}
+              aria-hidden="true"
             />
 
             {/* Sidebar */}
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="settings-title"
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-full max-w-md bg-cream z-50 shadow-2xl overflow-y-auto"
+              className="fixed right-0 top-0 z-50 h-full w-full max-w-md overflow-y-auto bg-cream shadow-2xl"
             >
               <div className="p-6">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold">Settings</h2>
+                <div className="mb-6 flex items-center justify-between">
+                  <h2 id="settings-title" className="text-2xl font-bold">
+                    Settings
+                  </h2>
                   <Button
+                    ref={closeRef}
                     variant="ghost"
                     size="icon"
                     onClick={() => setSettingsOpen(false)}
+                    aria-label="Close settings"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="h-5 w-5" aria-hidden="true" />
                   </Button>
                 </div>
 
-                {/* Language settings */}
-                <Card className="mb-4">
-                  <CardHeader>
-                    <CardTitle className="text-base">Output Language</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-3 gap-2">
-                      {languages.map((lang) => (
-                        <button
-                          key={lang.id}
-                          onClick={() => setLanguage(lang.id)}
-                          className={cn(
-                            "p-3 rounded-xl border-2 transition-all",
-                            language === lang.id
-                              ? "border-primary bg-primary/10"
-                              : "border-transparent bg-white hover:bg-gray-50"
-                          )}
-                        >
-                          <div className="text-2xl mb-1">{lang.flag}</div>
-                          <div className="text-sm font-medium">{lang.name}</div>
-                        </button>
-                      ))}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-3 text-center">
-                      💡 English produces better results and costs less
-                    </p>
-                  </CardContent>
-                </Card>
-
-                {/* AI automatically determines panel count */}
-
                 {/* API Status */}
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0">
                     <CardTitle className="text-base">API Status</CardTitle>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={loadConfig}
+                      onClick={() => void loadConfig()}
                       disabled={loading}
+                      aria-label="Refresh API status"
                     >
-                      <RefreshCw
-                        className={cn("w-4 h-4", loading && "animate-spin")}
-                      />
+                      <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} aria-hidden="true" />
                     </Button>
                   </CardHeader>
                   <CardContent>
                     {config ? (
                       <div className="space-y-3">
                         {config.providers.map((provider) => (
-                          <div
-                            key={provider.name}
-                            className="flex items-center justify-between p-3 bg-white rounded-xl"
-                          >
+                          <div key={provider.name} className="flex items-center justify-between rounded-xl bg-white p-3">
                             <div>
-                              <div className="font-medium capitalize">
-                                {provider.name.replace("_", " ")}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {provider.models.length} models
-                              </div>
+                              <div className="font-medium capitalize">{provider.name.replace("_", " ")}</div>
+                              <div className="text-xs text-muted-foreground">{provider.models.length} models</div>
                             </div>
                             <div className="flex items-center gap-2">
                               {provider.has_api_key ? (
-                                <span className="flex items-center text-green-600 text-sm">
-                                  <Check className="w-4 h-4 mr-1" />
+                                <span className="flex items-center text-sm text-green-700">
+                                  <Check className="mr-1 h-4 w-4" aria-hidden="true" />
                                   Configured
                                 </span>
                               ) : (
-                                <span className="text-yellow-600 text-sm">
-                                  Not configured
-                                </span>
+                                <span className="text-sm text-yellow-700">Not configured</span>
                               )}
                               <div
-                                className={cn(
-                                  "w-2 h-2 rounded-full",
-                                  provider.enabled
-                                    ? "bg-green-500"
-                                    : "bg-gray-300"
-                                )}
+                                className={cn("h-2 w-2 rounded-full", provider.enabled ? "bg-green-500" : "bg-gray-300")}
+                                aria-label={provider.enabled ? "Enabled" : "Disabled"}
+                                role="img"
                               />
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center text-muted-foreground py-4">
-                        {loading ? "Loading..." : "Failed to load config"}
+                      <div className="py-4 text-center text-sm text-muted-foreground">
+                        {loading ? "Loading…" : error ? `Couldn't load the configuration. ${error}` : "No data yet."}
                       </div>
                     )}
                   </CardContent>
                 </Card>
 
                 {/* Tip */}
-                <p className="text-sm text-muted-foreground mt-6 text-center">
-                  Configure API keys in{" "}
-                  <code className="bg-white px-1 rounded">
-                    config/api_config.yaml
-                  </code>
+                <p className="mt-6 text-center text-sm text-muted-foreground">
+                  Configure API keys in <code className="rounded bg-white px-1">config/api_config.yaml</code>
                 </p>
               </div>
             </motion.div>

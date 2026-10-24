@@ -1,0 +1,52 @@
+[
+ {
+  "id": "L1",
+  "q": "What kind of training data does reinforcement learning (RL) need to strengthen the long-context reasoning of LLMs?",
+  "a": "training data that are long, diverse, challenging, and verifiable"
+ },
+ {
+  "id": "L2",
+  "q": "Existing methods that synthesize such long-context training data depend on resources that become harder to obtain as the trained models get stronger. Which resources?",
+  "a": "external corpora or stronger teacher models"
+ },
+ {
+  "id": "L3",
+  "q": "Recently, RL in which a model learns from tasks it proposes itself has achieved excellent performance. What kind of tasks do the existing methods of this kind target?",
+  "a": "short-context tasks"
+ },
+ {
+  "id": "L4",
+  "q": "LongZero lets an LLM improve its own long-context reasoning without needing what?",
+  "a": "any external data"
+ },
+ {
+  "id": "L5",
+  "q": "Instead of writing questions and answers over existing documents, how does LongZero build a long-context training task, step by step?",
+  "a": "first the model synthesizes the question and answer with its supporting evidence in a compact structured form; only then is the evidence separately expanded into a long multi-document context"
+ },
+ {
+  "id": "L6",
+  "q": "Which two kinds of self-written tasks does LongZero combine?",
+  "a": "multi-hop reasoning tasks and multi-round retrieval tasks"
+ },
+ {
+  "id": "L7",
+  "q": "Which algorithm does LongZero train the model with?",
+  "a": "GRPO"
+ },
+ {
+  "id": "L8",
+  "q": "LongZero is evaluated on two LLMs. Across how many long-context reasoning benchmarks?",
+  "a": "five"
+ },
+ {
+  "id": "L9",
+  "q": "Which baselines does LongZero outperform in the experiments?",
+  "a": "both of its baselines: RL on data synthesized from external corpora"
+ },
+ {
+  "id": "L10",
+  "q": "Besides beating its baselines, what do the experimental results show LongZero generalizes to?",
+  "a": "real tasks"
+ }
+]

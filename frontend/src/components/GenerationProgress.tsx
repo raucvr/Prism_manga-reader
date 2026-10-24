@@ -1,211 +1,233 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Loader2, FileText, Wand2, Image, Check } from "lucide-react";
+import {
+  BookOpen,
+  Brush,
+  Check,
+  FileText,
+  Languages,
+  Loader2,
+  PenTool,
+  Sparkles,
+  type LucideIcon,
+} from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useAppStore, AppStage } from "@/store/app-store";
-import { api } from "@/lib/api";
+import type { JobState } from "@/lib/api";
+import { formatEta } from "@/lib/eta";
+import {
+  PIPELINE,
+  STATUS_COPY,
+  isRedrawOnly,
+  isTerminal,
+  jobTitle,
+  overallPercent,
+  pipelineIndex,
+  redrawLabel,
+  type PipelineStage,
+} from "@/lib/job-utils";
 
-interface StepInfo {
-  stage: AppStage;
-  icon: React.ReactNode;
-  title: string;
-  description: string;
+const STAGE_ICONS: Record<PipelineStage, LucideIcon> = {
+  parsing: FileText,
+  analyzing: Sparkles,
+  storyboarding: PenTool,
+  translating: Languages,
+  rendering: Brush,
+  assembling: BookOpen,
+};
+
+/** English jobs normally skip translation, so hide that step unless it is happening. */
+function visibleStages(job: JobState) {
+  return PIPELINE.filter((s) => s.id !== "translating" || job.language !== "en-US" || job.status === "translating");
 }
 
-const steps: StepInfo[] = [
-  {
-    stage: "parsing",
-    icon: <FileText className="w-5 h-5" />,
-    title: "Parse",
-    description: "Extracting text and figures from paper...",
-  },
-  {
-    stage: "generating-storyboard",
-    icon: <Wand2 className="w-5 h-5" />,
-    title: "Storyboard",
-    description: "Prism is creating the manga script...",
-  },
-  {
-    stage: "generating-manga",
-    icon: <Image className="w-5 h-5" />,
-    title: "Drawing",
-    description: "Prism is drawing your manga...",
-  },
-  {
-    stage: "completed",
-    icon: <Check className="w-5 h-5" />,
-    title: "Done",
-    description: "Your manga is ready!",
-  },
-];
+export function ProgressBar({ value, label, className }: { value: number; label: string; className?: string }) {
+  const pct = Math.max(0, Math.min(100, Math.round(value)));
+  return (
+    <div
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={pct}
+      className={cn("h-2 w-full overflow-hidden rounded-full bg-gray-200/80", className)}
+    >
+      <div
+        className="h-full rounded-full bg-gradient-to-r from-primary-400 to-secondary-400 transition-[width] duration-700 ease-out"
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  );
+}
 
-export function GenerationProgress() {
-  const { stage, storyboard } = useAppStore();
-  const [panelProgress, setPanelProgress] = useState({ current: 0, total: 0, message: "" });
-
-  const currentStepIndex = steps.findIndex((s) => s.stage === stage);
-  const isGenerating = ["parsing", "generating-storyboard", "generating-manga"].includes(stage);
-
-  // Debug logging
-  console.log("[GenerationProgress] Rendering:", { stage, currentStepIndex, isGenerating });
-
-  // Poll progress when generating manga
-  useEffect(() => {
-    if (stage !== "generating-manga") {
-      return;
+function useStopConfirm(onCancel: () => Promise<void>, question = "Stop making this manga? Panels that are already drawn will stay.") {
+  const [stopping, setStopping] = useState(false);
+  const stop = async () => {
+    if (!window.confirm(question)) return;
+    setStopping(true);
+    try {
+      await onCancel();
+    } finally {
+      setStopping(false);
     }
+  };
+  return { stopping, stop };
+}
 
-    const pollProgress = async () => {
-      try {
-        const progress = await api.getProgress();
-        if (progress.stage === "generating" || progress.stage === "completed") {
-          setPanelProgress({
-            current: progress.current_panel,
-            total: progress.total_panels,
-            message: progress.message || "",
-          });
-        }
-      } catch (e) {
-        // Ignore errors during polling
-      }
-    };
+interface ProgressProps {
+  job: JobState;
+  etaMs: number | null;
+  onCancel: () => Promise<void>;
+}
 
-    // Poll immediately and then every 1 second (faster updates during validation)
-    pollProgress();
-    const interval = setInterval(pollProgress, 1000);
-
-    return () => clearInterval(interval);
-  }, [stage]);
-
-  if (!isGenerating && stage !== "completed") return null;
+/** Full progress card, shown until the storyboard (and so the reader) exists. */
+export function GenerationProgress({ job, etaMs, onCancel }: ProgressProps) {
+  const stages = visibleStages(job);
+  const current = pipelineIndex(job.status);
+  const currentStageId = current >= 0 && current < PIPELINE.length ? PIPELINE[current].id : null;
+  const activeIndex = currentStageId ? stages.findIndex((s) => s.id === currentStageId) : current < 0 ? -1 : stages.length;
+  const copy = STATUS_COPY[job.status] ?? STATUS_COPY.queued;
+  const percent = overallPercent(job);
+  const eta = formatEta(etaMs);
+  const { stopping, stop } = useStopConfirm(onCancel);
 
   return (
-    <div className="w-full max-w-2xl mx-auto py-8">
-      {/* 步骤指示器 */}
-      <div className="relative flex justify-between mb-8">
-        {/* 连接线 */}
-        <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-200">
-          <motion.div
-            className="h-full bg-primary"
-            initial={{ width: "0%" }}
-            animate={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
-            transition={{ duration: 0.5 }}
-          />
+    <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:py-10">
+      <Card className="p-5 sm:p-8">
+        <h2 className="text-center text-xl font-bold sm:text-2xl">{job.title ? jobTitle(job) : "Preparing your manga"}</h2>
+
+        {/* Stage stepper */}
+        <div className="relative mt-6">
+          <div className="absolute left-4 right-4 top-4 h-0.5 bg-gray-200 sm:left-5 sm:right-5 sm:top-5" aria-hidden="true">
+            <motion.div
+              className="h-full bg-primary-400"
+              initial={false}
+              animate={{ width: `${(Math.max(0, Math.min(activeIndex, stages.length - 1)) / (stages.length - 1)) * 100}%` }}
+              transition={{ duration: 0.5 }}
+            />
+          </div>
+          <ol className="relative flex justify-between" aria-label="Steps">
+            {stages.map((stage, i) => {
+              const Icon = STAGE_ICONS[stage.id];
+              const done = i < activeIndex;
+              const active = i === activeIndex;
+              return (
+                <li
+                  key={stage.id}
+                  className="relative z-10 flex flex-col items-center"
+                  aria-current={active ? "step" : undefined}
+                >
+                  <span
+                    className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-full sm:h-10 sm:w-10",
+                      done || active ? "bg-primary-400 text-white" : "bg-gray-200 text-gray-500",
+                    )}
+                  >
+                    {active ? (
+                      <Loader2 className="h-4 w-4 animate-spin sm:h-5 sm:w-5" aria-hidden="true" />
+                    ) : done ? (
+                      <Check className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
+                    ) : (
+                      <Icon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
+                    )}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "mt-2 hidden text-xs font-medium sm:block",
+                      done || active ? "text-foreground" : "text-muted-foreground",
+                    )}
+                  >
+                    {stage.label}
+                  </span>
+                  <span className="sr-only">
+                    {stage.label}: {done ? "done" : active ? "in progress" : "not started"}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
         </div>
 
-        {/* 步骤点 */}
-        {steps.map((step, index) => {
-          const isActive = index === currentStepIndex;
-          const isCompleted = index < currentStepIndex;
+        {/* What's happening now */}
+        <div className="mt-8 text-center" aria-live="polite">
+          <p className="text-lg font-medium">{copy.message}</p>
+          {job.stage_message && <p className="mt-1 text-sm text-muted-foreground">{job.stage_message}</p>}
+        </div>
 
-          return (
-            <div key={step.stage} className="relative flex flex-col items-center">
-              <motion.div
-                className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center z-10",
-                  isCompleted
-                    ? "bg-primary text-white"
-                    : isActive
-                    ? "bg-primary text-white"
-                    : "bg-gray-200 text-gray-400"
-                )}
-                animate={isActive ? { scale: [1, 1.1, 1] } : {}}
-                transition={{ repeat: Infinity, duration: 1.5 }}
-              >
-                {isActive ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : isCompleted ? (
-                  <Check className="w-5 h-5" />
-                ) : (
-                  step.icon
-                )}
-              </motion.div>
-              <span
-                className={cn(
-                  "mt-2 text-sm font-medium",
-                  isActive || isCompleted ? "text-foreground" : "text-muted-foreground"
-                )}
-              >
-                {step.title}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+        <div className="mt-6">
+          <ProgressBar value={percent} label="Overall progress" />
+          <div className="mt-2 flex justify-between text-sm text-muted-foreground">
+            <span>{percent}%</span>
+            <span>{eta ?? (job.status === "rendering" ? "Estimating time left…" : "")}</span>
+          </div>
+        </div>
 
-      {/* 当前步骤详情 */}
-      <motion.div
-        key={stage}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center"
-      >
-        <p className="text-lg text-muted-foreground">
-          {steps[currentStepIndex]?.description}
-        </p>
-
-        {/* Panel progress during manga generation */}
-        {stage === "generating-manga" && panelProgress.total > 0 && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="mt-4 inline-flex flex-col items-center gap-2"
-          >
-            <span className="px-4 py-2 bg-primary/10 rounded-full text-2xl font-bold text-primary">
-              Panel {panelProgress.current} / {panelProgress.total}
-            </span>
-            {panelProgress.message && (
-              <span className="text-sm text-muted-foreground">
-                {panelProgress.message}
-              </span>
-            )}
-          </motion.div>
-        )}
-
-        {/* Storyboard preview */}
-        {stage === "generating-manga" && storyboard && Array.isArray(storyboard.panels) && storyboard.panels.length > 0 && (
-          <div className="mt-6 p-4 bg-white rounded-2xl shadow-sm">
-            <p className="text-sm text-muted-foreground mb-2">Storyboard Preview</p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {storyboard.panels.slice(0, 6).map((panel, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, scale: 0 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="w-16 h-20 bg-gray-100 rounded-lg flex items-center justify-center text-xs text-gray-400"
-                >
-                  {panel?.panel_type === "title" ? "📖" : "🎨"}
-                </motion.div>
-              ))}
-            </div>
+        {!isTerminal(job.status) && (
+          <div className="mt-6 flex justify-center">
+            <button
+              type="button"
+              onClick={stop}
+              disabled={stopping}
+              className="rounded-full px-4 py-2 text-sm text-muted-foreground underline-offset-4 hover:text-red-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 disabled:opacity-50"
+            >
+              {stopping ? "Stopping…" : "Stop generating"}
+            </button>
           </div>
         )}
-      </motion.div>
+      </Card>
 
-      {/* 可爱的加载动画 */}
-      {isGenerating && (
-        <div className="mt-8 flex justify-center">
-          <motion.div
-            className="flex gap-2"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+      <p className="mt-4 text-center text-sm text-muted-foreground">
+        You can close this tab: open the same link later to pick up where you left off.
+      </p>
+    </div>
+  );
+}
+
+/** One-line status shown above the reader while panels are still being drawn. */
+export function JobStatusBar({ job, etaMs, onCancel }: ProgressProps) {
+  // A redraw of single panels: whole-job progress and time left would describe panels that are not being drawn.
+  const redrawOnly = isRedrawOnly(job);
+  const copy = STATUS_COPY[job.status] ?? STATUS_COPY.queued;
+  const eta = formatEta(etaMs);
+  const { stopping, stop } = useStopConfirm(
+    onCancel,
+    redrawOnly ? "Stop this redraw? Pictures that are already drawn will stay." : undefined,
+  );
+  const total = job.progress?.total || job.panels.length;
+  const done = job.progress?.done ?? job.panels.filter((p) => p.status === "done").length;
+
+  return (
+    <div className="rounded-2xl bg-white/85 px-3 py-2 shadow-sm ring-1 ring-black/5 sm:px-4">
+      <div className="flex items-center gap-2 text-sm">
+        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary-500" aria-hidden="true" />
+        <p className="min-w-0 flex-1 truncate" aria-live="polite">
+          {redrawOnly ? (
+            <span className="font-medium">{redrawLabel(job.redraw_panels ?? [])}</span>
+          ) : (
+            <>
+              <span className="font-medium">{job.stage_message || copy.message}</span>
+              <span className="text-muted-foreground">
+                {" · "}
+                {done}/{total} drawn{eta ? ` · ${eta}` : ""}
+              </span>
+            </>
+          )}
+        </p>
+        {!isTerminal(job.status) && (
+          <button
+            type="button"
+            onClick={stop}
+            disabled={stopping}
+            className="shrink-0 rounded-full px-2 py-1 text-xs text-muted-foreground hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 disabled:opacity-50"
           >
-            {["🔮", "✨", "🎨"].map((emoji, i) => (
-              <motion.span
-                key={i}
-                className="text-2xl"
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 0.6, delay: i * 0.2, repeat: Infinity }}
-              >
-                {emoji}
-              </motion.span>
-            ))}
-          </motion.div>
-        </div>
-      )}
+            {stopping ? "Stopping…" : "Stop"}
+          </button>
+        )}
+      </div>
+      {!redrawOnly && <ProgressBar value={overallPercent(job)} label="Overall progress" className="mt-1.5 h-1.5" />}
     </div>
   );
 }

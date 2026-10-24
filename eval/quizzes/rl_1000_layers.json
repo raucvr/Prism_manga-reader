@@ -1,0 +1,52 @@
+[
+ {
+  "id": "R1",
+  "q": "Scaling up self-supervised learning has driven breakthroughs in which fields, while comparable progress has remained elusive in reinforcement learning (RL)?",
+  "a": "language and vision"
+ },
+ {
+  "id": "R2",
+  "q": "The authors study building blocks for self-supervised RL, with network depth serving as a critical factor. What do these building blocks unlock?",
+  "a": "substantial improvements in scalability"
+ },
+ {
+  "id": "R3",
+  "q": "Most RL papers in recent years have relied on shallow architectures. How many layers do these have?",
+  "a": "around 2 – 5 layers"
+ },
+ {
+  "id": "R4",
+  "q": "Up to how many layers do the authors increase network depth, showing that this can significantly boost performance?",
+  "a": "up to 1024 layers"
+ },
+ {
+  "id": "R5",
+  "q": "The experiments are conducted in an unsupervised goal-conditioned setting. What is not provided to the agent?",
+  "a": "demonstrations or rewards"
+ },
+ {
+  "id": "R6",
+  "q": "Exploring from scratch in the unsupervised goal-conditioned setting, what must the agent learn?",
+  "a": "how to maximize the likelihood of reaching commanded goals"
+ },
+ {
+  "id": "R7",
+  "q": "On which kinds of tasks is the approach evaluated?",
+  "a": "simulated locomotion and manipulation tasks"
+ },
+ {
+  "id": "R8",
+  "q": "By how much does the approach increase the performance of the self-supervised contrastive RL algorithm?",
+  "a": "by 2× – 50×"
+ },
+ {
+  "id": "R9",
+  "q": "Besides boosting the self-supervised contrastive RL algorithm, what does the approach outperform?",
+  "a": "other goal-conditioned baselines"
+ },
+ {
+  "id": "R10",
+  "q": "Besides increasing success rates, what else does increasing the model depth change?",
+  "a": "it qualitatively changes the behaviors learned"
+ }
+]

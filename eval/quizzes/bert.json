@@ -1,0 +1,52 @@
+[
+ {
+  "id": "B1",
+  "q": "What does the name BERT stand for?",
+  "a": "Bidirectional Encoder Representations from Transformers"
+ },
+ {
+  "id": "B2",
+  "q": "How does BERT differ from earlier language representation models?",
+  "a": "it pre-trains deep bidirectional representations, conditioning on both left and right context in all layers"
+ },
+ {
+  "id": "B3",
+  "q": "What kind of data is BERT pre-trained on?",
+  "a": "unlabeled text"
+ },
+ {
+  "id": "B4",
+  "q": "How is the pre-trained model adapted to a specific task?",
+  "a": "fine-tuned with just one additional output layer, without substantial task-specific architecture changes"
+ },
+ {
+  "id": "B5",
+  "q": "Name example tasks it can be used for.",
+  "a": "a wide range, e.g. question answering and language inference"
+ },
+ {
+  "id": "B6",
+  "q": "On how many NLP tasks did BERT set a new state of the art?",
+  "a": "eleven"
+ },
+ {
+  "id": "B7",
+  "q": "What GLUE score did it reach and by how much did it improve?",
+  "a": "80.5, a 7.7 point absolute improvement"
+ },
+ {
+  "id": "B8",
+  "q": "What MultiNLI accuracy did it reach and by how much did it improve?",
+  "a": "86.7%, a 4.6 point absolute improvement"
+ },
+ {
+  "id": "B9",
+  "q": "What SQuAD v1.1 test F1 did it reach and by how much did it improve?",
+  "a": "93.2 F1, a 1.5 point absolute improvement"
+ },
+ {
+  "id": "B10",
+  "q": "What SQuAD v2.0 test F1 did it reach and by how much did it improve?",
+  "a": "83.1 F1, a 5.1 point absolute improvement"
+ }
+]

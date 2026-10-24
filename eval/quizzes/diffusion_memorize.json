@@ -1,0 +1,52 @@
+[
+ {
+  "id": "M1",
+  "q": "Diffusion models have achieved remarkable success across a wide range of generative tasks. What key challenge about them do the authors point to?",
+  "a": "understanding the mechanisms that prevent their memorization of training data and allow generalization"
+ },
+ {
+  "id": "M2",
+  "q": "Studying the role of the training dynamics, the authors identify two distinct timescales. What happens at the early one?",
+  "a": "models begin to generate high-quality samples"
+ },
+ {
+  "id": "M3",
+  "q": "Of the two training timescales the authors identify, what emerges beyond the later one?",
+  "a": "memorization"
+ },
+ {
+  "id": "M4",
+  "q": "How does the later of the two timescales change with the training set size n?",
+  "a": "it increases linearly with n"
+ },
+ {
+  "id": "M5",
+  "q": "How does the early timescale change with the training set size n?",
+  "a": "it remains constant"
+ },
+ {
+  "id": "M6",
+  "q": "What does the dependence of the two timescales on the training set size n create?",
+  "a": "a window of training times, growing with n, where models generalize effectively"
+ },
+ {
+  "id": "M7",
+  "q": "When does overfitting disappear at infinite training times?",
+  "a": "only when the training set size n becomes larger than a model-dependent threshold"
+ },
+ {
+  "id": "M8",
+  "q": "These findings reveal a form of implicit dynamical regularization in the training dynamics. Even in what kind of settings does it allow models to avoid memorization?",
+  "a": "highly overparameterized settings"
+ },
+ {
+  "id": "M9",
+  "q": "The authors support their results with numerical experiments on realistic and synthetic datasets. Which architectures do these experiments use?",
+  "a": "standard U-Net architectures"
+ },
+ {
+  "id": "M10",
+  "q": "What model does the authors' theoretical analysis use?",
+  "a": "a tractable random features model, studied in the high-dimensional limit"
+ }
+]

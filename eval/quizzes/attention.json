@@ -1,0 +1,47 @@
+[
+ {
+  "id": "A1",
+  "q": "Before this paper, what were the dominant sequence transduction (e.g. translation) models built from?",
+  "a": "complex recurrent (RNN) or convolutional (CNN) neural networks with an encoder and a decoder; the best also connect encoder and decoder with attention"
+ },
+ {
+  "id": "A2",
+  "q": "What is the new architecture called, and what is it based on?",
+  "a": "the Transformer, based solely on attention mechanisms"
+ },
+ {
+  "id": "A3",
+  "q": "What does the new architecture remove entirely?",
+  "a": "recurrence and convolutions"
+ },
+ {
+  "id": "A4",
+  "q": "Besides better quality, what two practical advantages did the experiments show?",
+  "a": "more parallelizable and significantly less time to train"
+ },
+ {
+  "id": "A5",
+  "q": "What BLEU score did it reach on WMT 2014 English-to-German?",
+  "a": "28.4 BLEU"
+ },
+ {
+  "id": "A6",
+  "q": "How did the English-to-German result compare with the previous best results?",
+  "a": "better than the existing best results, including ensembles, by over 2 BLEU"
+ },
+ {
+  "id": "A7",
+  "q": "What did it reach on WMT 2014 English-to-French?",
+  "a": "a new single-model state-of-the-art BLEU of 41.8"
+ },
+ {
+  "id": "A8",
+  "q": "How long and on what hardware was the English-to-French model trained, and how does that cost compare with earlier best models?",
+  "a": "3.5 days on eight GPUs; a small fraction of the training cost of the best previous models"
+ },
+ {
+  "id": "A9",
+  "q": "Does the model work on tasks other than translation? Which one, and with how much data?",
+  "a": "yes, English constituency parsing, with both large and limited training data"
+ }
+]

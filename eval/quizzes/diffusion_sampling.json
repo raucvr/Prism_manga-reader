@@ -1,0 +1,47 @@
+[
+ {
+  "id": "S1",
+  "q": "To obtain δ-error, how does the number of steps needed by the authors' diffusion-model sampling algorithms scale?",
+  "a": "polylog(1/δ) steps"
+ },
+ {
+  "id": "S2",
+  "q": "The authors' diffusion-model sampling algorithms reach δ-error given access to score estimates of what accuracy?",
+  "a": "Õ(δ)-accurate"
+ },
+ {
+  "id": "S3",
+  "q": "In which norm is the accuracy of the score estimates measured?",
+  "a": "L²"
+ },
+ {
+  "id": "S4",
+  "q": "How does the step count of the authors' algorithms compare with all previous results?",
+  "a": "an exponential improvement over all previous results"
+ },
+ {
+  "id": "S5",
+  "q": "Under minimal data assumptions, what is the complexity of the authors' diffusion-model sampling?",
+  "a": "Õ(d⋆ polylog(1/δ)), where d⋆ is the intrinsic dimension of the data"
+ },
+ {
+  "id": "S6",
+  "q": "Beyond minimal data assumptions, under what condition does the complexity reduce further?",
+  "a": "a non-uniform L-Lipschitz condition"
+ },
+ {
+  "id": "S7",
+  "q": "Under the further condition the authors consider beyond minimal data assumptions, what does the complexity reduce to?",
+  "a": "Õ(L polylog(1/δ))"
+ },
+ {
+  "id": "S8",
+  "q": "For general log-concave distributions, what does the authors' approach also yield?",
+  "a": "the first polylog(1/δ) complexity sampler for general log-concave distributions"
+ },
+ {
+  "id": "S9",
+  "q": "When sampling general log-concave distributions, the authors' approach uses only which kind of evaluations?",
+  "a": "gradient evaluations"
+ }
+]
