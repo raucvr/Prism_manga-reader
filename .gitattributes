@@ -1,0 +1,22 @@
+# Text files are stored with LF; each OS checks them out with its own line endings, except:
+* text=auto
+
+# bash (macOS, Linux, WSL, Git Bash) fails on CRLF; cmd.exe can misparse labels and goto in LF-only batch files
+*.sh    text eol=lf
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# Fonts, images and papers: never convert line endings or diff
+*.ttf   binary
+*.otf   binary
+*.ttc   binary
+*.woff  binary
+*.woff2 binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.pdf   binary

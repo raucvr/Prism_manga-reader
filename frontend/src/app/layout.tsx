@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+// Inter 4 (OFL-1.1, see public/fonts/OFL.txt): the variable Latin subset Google Fonts serves, taken from
+// @fontsource-variable/inter 5.3.0. A committed file, so building never fetches Google Fonts (blocked in some regions).
+const inter = localFont({
+  src: "../../public/fonts/InterVariable-latin.woff2",
+  weight: "100 900",
   variable: "--font-inter",
 });
 

@@ -85,6 +85,12 @@ class GenerationConfig:
     top_p: float = 0.95
     top_k: int = 40
     stop_sequences: list[str] = field(default_factory=list)
+    # Seed / OpenAI-compatible extras (ignored by engines that do not support them)
+    thinking: Optional[bool] = None            # None = engine default
+    response_format: Optional[dict] = None     # e.g. {"type": "json_schema", "json_schema": {...}}
+    model: Optional[str] = None                # per-call model override
+    reasoning_effort: Optional[str] = None     # with thinking: low | medium | high (None = engine default)
+    prompt_cache_key: Optional[str] = None     # routes the calls of one job to the provider's cache of their shared prefix
 
 
 @dataclass
@@ -94,9 +100,11 @@ class ImageGenerationConfig:
     height: int = 1536
     num_images: int = 1
     style: str = "full_color_manga"
-    negative_prompt: str = ""
-    temperature: float = 0.3  # 低温度确保角色一致性
+    negative_prompt: str = ""                  # not supported by Seedream (kept for Gemini engines)
+    temperature: float = 0.3                   # not supported by Seedream (kept for Gemini engines)
     max_tokens: int = 4096
+    # provider-specific knobs, e.g. Seedream: {"fast": bool, "output_format": "png"|"jpeg", "watermark": bool, "size": "2K"}
+    extra: dict = field(default_factory=dict)
 
 
 @dataclass

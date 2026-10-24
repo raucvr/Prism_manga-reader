@@ -1,0 +1,52 @@
+[
+ {
+  "id": "Q1",
+  "q": "To recover reasoning in low-bit LLMs, existing quantization-aware training (QAT) recipes typically supervise the quantized student with the original full-precision model. On what kind of sequences?",
+  "a": "fixed response sequences"
+ },
+ {
+  "id": "Q2",
+  "q": "Even after quantization-aware training with existing recipes, on which kind of tasks do low-bit quantized models still struggle?",
+  "a": "long-horizon reasoning tasks"
+ },
+ {
+  "id": "Q3",
+  "q": "What is the first of the two challenges the authors identify in closing the gap between the low-bit and full-precision models?",
+  "a": "trajectory divergence: a mismatch between training prefixes and those encountered during student generation"
+ },
+ {
+  "id": "Q4",
+  "q": "What is the second of the two challenges the authors identify?",
+  "a": "distributional misalignment: on its own prefixes, the student underpredicts some next-token candidates and overpredicts others"
+ },
+ {
+  "id": "Q5",
+  "q": "OnQ, the authors' low-bit recovery pipeline, combines candidate-wise Dynamic KL with which other technique?",
+  "a": "on-policy distillation"
+ },
+ {
+  "id": "Q6",
+  "q": "Starting from block-wise calibration, on which prefixes does OnQ's quantized student receive full-precision teacher supervision?",
+  "a": "its own prefixes, from the responses it generates itself"
+ },
+ {
+  "id": "Q7",
+  "q": "By what does Dynamic KL weight forward and reverse KL?",
+  "a": "each candidate’s teacher–student probability ratio"
+ },
+ {
+  "id": "Q8",
+  "q": "What does OnQ achieve across Qwen3-1.7B, 4B, and 8B at 2- and 3-bit precision?",
+  "a": "the highest nine-benchmark average"
+ },
+ {
+  "id": "Q9",
+  "q": "At 2 bits, by how many points does OnQ improve the Qwen3-8B average over the strongest baseline?",
+  "a": "10.26 points"
+ },
+ {
+  "id": "Q10",
+  "q": "What does OnQ also change about the responses it produces?",
+  "a": "it produces shorter responses with fewer truncations and repetitive errors"
+ }
+]

@@ -17,6 +17,7 @@ from .base import (
 )
 from .nano_banana import NanoBananaEngine
 from .openrouter import OpenRouterEngine
+from .byteplus import BytePlusEngine, DEFAULT_TEXT_MODEL as BYTEPLUS_DEFAULT_TEXT_MODEL
 
 # 导入配置加载器
 import sys
@@ -38,11 +39,14 @@ __all__ = [
     # 引擎实现
     "NanoBananaEngine",
     "OpenRouterEngine",
+    "BytePlusEngine",
     # 工厂函数
     "create_engine",
     "get_default_engine",
     "get_image_engine",
+    "get_vision_engine",
     "get_text_engine",
+    "split_model_spec",
     "reset_client",
 ]
 
@@ -84,6 +88,7 @@ def create_engine(
     engine_map = {
         "google_genai": NanoBananaEngine,
         "openrouter": OpenRouterEngine,
+        "byteplus": BytePlusEngine,
     }
 
     engine_class = engine_map.get(provider_name)
@@ -97,21 +102,55 @@ def create_engine(
     )
 
 
+KNOWN_PROVIDERS = ("byteplus", "openrouter", "google_genai")
+
+
+def split_model_spec(spec: str) -> tuple[Optional[str], str]:
+    """``"byteplus/seed-2-0-pro"`` → ``("byteplus", "seed-2-0-pro")``; ``"google/gemini-x"`` → ``(None, "google/gemini-x")``.
+
+    Only known provider names are treated as a prefix, so OpenRouter model ids such as
+    ``google/gemini-3-pro-image-preview`` keep working unchanged.
+    """
+    if spec and "/" in spec:
+        provider, model = spec.split("/", 1)
+        if provider in KNOWN_PROVIDERS:
+            return provider, model
+    return None, spec
+
+
+def _engine_for_spec(spec: str, *, image: bool = False) -> Optional[BaseEngine]:
+    """Create an engine for a ``provider/model`` spec if that provider is enabled; else None."""
+    provider, model = split_model_spec(spec)
+    if provider is None:
+        return None
+    config = get_config()
+    provider_config = config.get_provider(provider)
+    if provider_config is None or not provider_config.enabled:
+        return None
+    if provider == "byteplus":
+        # BytePlus engines serve text and images from one client: text model + Seedream image model
+        if image:
+            return BytePlusEngine(api_key=provider_config.api_key, base_url=provider_config.base_url or None, model=BYTEPLUS_DEFAULT_TEXT_MODEL, image_model=model)
+        return BytePlusEngine(api_key=provider_config.api_key, base_url=provider_config.base_url or None, model=model)
+    return create_engine(provider, model=model, provider_config=provider_config)
+
+
 def get_default_engine() -> BaseEngine:
     """
-    获取默认引擎（Nano Banana Pro）
-
-    Returns:
-        配置的默认引擎实例
+    获取默认文本引擎：优先 core_engine.text_model / default_model（支持 provider/model），
+    其次 Google GenAI，最后第一个启用的服务商。
     """
     config = get_config()
 
-    # 首先尝试 Google GenAI (Nano Banana Pro)
+    for spec in (config.text_model, config.default_model):
+        engine = _engine_for_spec(spec) if spec else None
+        if engine is not None:
+            return engine
+
     google_config = config.get_provider("google_genai")
     if google_config and google_config.enabled:
         return create_engine("google_genai", provider_config=google_config)
 
-    # 回退到第一个启用的服务商
     for provider in config.get_enabled_providers():
         return create_engine(provider.name, provider_config=provider)
 
@@ -120,39 +159,36 @@ def get_default_engine() -> BaseEngine:
 
 def get_image_engine() -> BaseEngine:
     """
-    获取图像生成引擎 - 从配置读取模型
-
-    Returns:
-        图像生成引擎实例
+    获取图像生成引擎 - 从配置读取模型（支持 byteplus/… Seedream、openrouter/…、google_genai）
     """
     config = get_config()
-    image_model = config.image_model  # 从配置读取图像模型
+    image_model = config.image_model
 
     print(f"[Engines] Using image model: {image_model}")
+
+    engine = _engine_for_spec(image_model, image=True)
+    if engine is not None:
+        return engine
 
     # 1. 首选直接调用 Google Gemini API
     google_config = config.get_provider("google_genai")
     if google_config and google_config.enabled:
-        # 如果是 OpenRouter 格式的模型名，转换为 Google 格式
-        model_name = image_model
-        if "/" in model_name:
-            model_name = model_name.split("/")[-1]  # google/gemini-3-pro -> gemini-3-pro
-        return create_engine(
-            "google_genai",
-            model=model_name,
-            provider_config=google_config
-        )
+        model_name = image_model.split("/")[-1] if "/" in image_model else image_model
+        return create_engine("google_genai", model=model_name, provider_config=google_config)
 
     # 2. 通过 OpenRouter 调用
     openrouter_config = config.get_provider("openrouter")
     if openrouter_config and openrouter_config.enabled:
-        return create_engine(
-            "openrouter",
-            model=image_model,
-            provider_config=openrouter_config
-        )
+        return create_engine("openrouter", model=image_model, provider_config=openrouter_config)
 
-    raise RuntimeError("No image engine available. Enable google_genai or openrouter provider.")
+    raise RuntimeError("No image engine available. Enable byteplus, google_genai or openrouter provider.")
+
+
+def get_vision_engine() -> BaseEngine:
+    """获取视觉理解引擎（面板 QA 判定），默认与文本引擎相同"""
+    config = get_config()
+    engine = _engine_for_spec(config.vision_model) if config.vision_model else None
+    return engine or get_default_engine()
 
 
 def get_text_engine(prefer_fast: bool = False) -> BaseEngine:
@@ -160,31 +196,31 @@ def get_text_engine(prefer_fast: bool = False) -> BaseEngine:
     获取文本生成引擎
 
     Args:
-        prefer_fast: 是否优先选择快速模型
-
-    Returns:
-        文本生成引擎实例
+        prefer_fast: 是否优先选择快速模型（core_engine.fast_text_model）
     """
     config = get_config()
 
     if prefer_fast:
-        # 优先使用 flash 模型
+        engine = _engine_for_spec(config.fast_text_model) if config.fast_text_model else None
+        if engine is not None:
+            return engine
         google_config = config.get_provider("google_genai")
         if google_config and google_config.enabled:
             for model in google_config.models:
                 if "flash" in model.lower():
                     return create_engine("google_genai", model=model, provider_config=google_config)
 
-    # 使用 fallback 模型
     fallback = config.fallback_text_model
     if fallback and "/" in fallback:
+        engine = _engine_for_spec(fallback)
+        if engine is not None:
+            return engine
         provider, model = fallback.split("/", 1)
         if provider == "openrouter":
             openrouter_config = config.get_provider("openrouter")
             if openrouter_config and openrouter_config.enabled:
                 return create_engine("openrouter", model=model, provider_config=openrouter_config)
 
-    # 回退到默认引擎
     return get_default_engine()
 
 
@@ -204,7 +240,7 @@ class ModelClient:
         try:
             self._default_engine = get_default_engine()
             self._image_engine = get_image_engine()
-        except RuntimeError as e:
+        except Exception as e:  # noqa: BLE001 — missing keys raise ValueError
             print(f"[ModelClient] Warning: {e}")
 
     async def generate_text(
@@ -291,3 +327,12 @@ async def reset_client() -> None:
     if _client is not None:
         await _client.close()
         _client = None
+
+
+def _invalidate_client_on_config_change(_config) -> None:
+    """Sync hook for the config watcher thread: drop the cached client so the next call rebuilds it."""
+    global _client
+    _client = None
+
+
+get_config().on_change(_invalidate_client_on_config_change)

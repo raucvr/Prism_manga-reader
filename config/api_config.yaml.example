@@ -1,31 +1,64 @@
 # Prism - API Configuration
-# Copy this file to api_config.yaml and fill in your API key
+# Copy this file to api_config.yaml and fill in your API key(s). api_config.yaml is gitignored.
 
 core_engine:
-  default_model: "google/gemini-3-pro-image-preview"
-  image_model: "google/gemini-3-pro-image-preview"
+  # Models are written as provider/model. The provider prefix selects the engine.
+  # BytePlus ModelArk (recommended): Seed 2.0 for text + vision, Seedream 5.0 Pro for images.
+  default_model: "byteplus/seed-2-0-pro-260328"
+  text_model: "byteplus/seed-2-0-pro-260328"            # the writer: paper analysis, story, fix rounds, quiz (thinking enabled)
+  # A second model family checks the writer: in a blind test DeepSeek V4 Pro found 56% of the errors two Seed fact-checks
+  # had left (another Seed pass: 10%) and translated with far less drift. Activate it in the ModelArk console; without it
+  # (or when its content filter refuses a paper's text) these roles fall back to text_model on their own.
+  check_model: "byteplus/deepseek-v4-pro-ga-260813?effort=high"   # brief check, fact-checks (English and translations)
+  translate_model: "byteplus/deepseek-v4-pro-ga-260813"           # translation (no thinking: fast)
+  fast_text_model: "byteplus/dola-seed-2-1-turbo-260628"  # line fitting and the quiz's reader (fast, json_schema)
+  vision_model: "byteplus/seed-2-0-pro-260328"          # the art check: finds heads, the board and stray text (v2: panel QA judge)
+  image_model: "byteplus/dola-seedream-5-0-pro-260628"  # or byteplus/dola-seedream-5-0-flash-260915 (cheaper, faster)
 
-# API Providers
 providers:
-  openrouter:
+  byteplus:
     enabled: true
-    api_key: "${OPENROUTER_API_KEY}"  # Set via environment variable or replace with your key
+    api_key: "${ARK_API_KEY}"   # ModelArk API key, or paste it here (file is gitignored)
+    base_url: "https://ark.ap-southeast.bytepluses.com/api/v3"
+    models:
+      - "seed-2-0-pro-260328"
+      - "dola-seed-2-1-turbo-260628"
+      - "dola-seedream-5-0-pro-260628"
+      - "dola-seedream-5-0-flash-260915"
+      - "deepseek-v4-pro-ga-260813"
+  openrouter:                    # legacy path (Gemini image generation through OpenRouter)
+    enabled: false
+    api_key: "${OPENROUTER_API_KEY}"
     base_url: "https://openrouter.ai/api/v1"
     models:
       - "google/gemini-3-pro-image-preview"
 
-# Manga generation settings
 manga_settings:
-  default_style: "full_color_manga"
-  aspect_ratio: "2:3"
-  render_text_in_image: true
-  panels_per_page: 1
-  default_theme: "chibikawa"
-  negative_prompt: "photorealistic, 3d render, anime style, Disney style, complex shading, multiple panels, comic strip layout, blurry, messy lines"
+  default_style: "full_color_manga"   # legacy, unused by v3
+  default_theme: "kumomo"      # the original characters drawn from config/character_images
+  layout: "single"             # v2 only (v3 always draws one 1024x1536 image per panel): strip = two panels per 2240x1120 image
+  panel_width: 1024
+  panel_height: 1536
+  concurrency: 5               # parallel Seedream calls (account IPM limit is 500/min)
+  strip_width: 2240            # v2 strip layout only; 2240x1120 = 2.5 MP stays in the $0.045 price tier (<= 2.61 MP)
+  strip_height: 1120
+  qa_enabled: true             # v2 only: a vision judge transcribes each panel (v3 letters the text itself)
+  qa_blind_check: true         # v2 only: also transcribe each panel without the script
+  max_attempts: 3              # art attempts per panel when the art check finds a problem (the best attempt is kept)
+  pipeline: v3                 # v3: text-free art + typeset text + code-drawn charts (default); v2: the image model letters the text
+  bilingual: true              # v3: letter the same art in English and Chinese (2nd language: text calls only)
+  min_panels: 16               # v3: a story has 16 to 24 panels ("long": 28 to 40); the quiz revision may add up to 4
+  max_panels: 24
+  style_anchor: false          # v2 only: pass the first finished panel as an extra reference for palette continuity
+  fast: false                  # Seedream fast mode (~40 s vs ~110 s per panel)
 
-# Output settings
 output:
-  image_format: "png"
-  image_quality: 95
-  max_width: 1024
-  max_height: 1536
+  image_format: "jpeg"         # the format asked of Seedream for the raw art: jpeg | png (larger)
+  image_quality: 92            # unused by v3
+  max_width: 1024              # unused by v3
+  max_height: 1536             # unused by v3
+
+server:
+  # /api/generate/* are raw text and image calls to the paid models, for scripts and debugging; the web UI never uses
+  # them. Keep this off unless you need them: while on, anything that can reach the backend can spend your balance.
+  enable_generate_api: false

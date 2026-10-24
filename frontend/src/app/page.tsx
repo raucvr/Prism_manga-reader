@@ -1,224 +1,172 @@
 "use client";
 
-import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Wand2, RotateCcw } from "lucide-react";
+import React, { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 
 import { Header } from "@/components/Header";
 import { Dropzone } from "@/components/Dropzone";
-import { ThemeSelector } from "@/components/CharacterSelector";
-import { GenerationProgress } from "@/components/GenerationProgress";
-import { MangaReader } from "@/components/MangaReader";
+import { GenerateOptions } from "@/components/GenerateOptions";
+import { RecentJobs } from "@/components/RecentJobs";
+import { JobView } from "@/components/JobView";
 import { SettingsPanel } from "@/components/SettingsPanel";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { Button } from "@/components/ui/button";
+import type { DemoSource } from "@/hooks/useJob";
 import { useAppStore } from "@/store/app-store";
-import { api } from "@/lib/api";
+import { useReaderPrefs } from "@/store/reader-prefs";
 
-export default function Home() {
-  const {
-    stage,
-    file,
-    extractedText,
-    textPreview,
-    mangaTheme,
-    numPanels,
-    language,
-    title,
-    manga,
-    error,
-    setStage,
-    setStoryboard,
-    setManga,
-    setError,
-    reset,
-  } = useAppStore();
+/**
+ * Routing lives in the query string so a reload or a shared link restores the view:
+ *   /             upload + options
+ *   /?job=<id>    job progress + reader (polls the backend)
+ *   /?demo=1      demo job without a backend (`strip` = strip layout, `early` = before panels exist)
+ */
+function navigate(search: string) {
+  // Next.js keeps useSearchParams in sync with history.pushState (no server round trip).
+  window.history.pushState(null, "", search ? `?${search}` : window.location.pathname);
+}
 
-  const handleGenerate = async () => {
-    if (!extractedText) {
-      setError("Please upload a PDF file first");
-      return;
-    }
+export default function Page() {
+  const calm = useReaderPrefs((s) => s.calm);
 
-    console.log(`[Prism] Starting generation: theme=${mangaTheme}, language=${language}`);
+  useEffect(() => {
+    useReaderPrefs.getState().hydrate();
+  }, []);
 
-    try {
-      // Step 1: Generate storyboard
-      setStage("generating-storyboard");
-      console.log("[Prism] Step 1: Generating storyboard...");
-      const storyboard = await api.generateStoryboard({
-        text: extractedText,
-        title,
-        character: mangaTheme,
-        num_panels: numPanels,
-        language,
-      });
-      console.log("[Prism] Storyboard response:", JSON.stringify(storyboard, null, 2).slice(0, 500));
-
-      // Validate storyboard structure before setting
-      if (!storyboard || typeof storyboard !== 'object') {
-        throw new Error("Invalid storyboard response: not an object");
-      }
-      if (!Array.isArray(storyboard.panels)) {
-        console.warn("[Prism] Storyboard panels is not an array, setting to empty array");
-        storyboard.panels = [];
-      }
-
-      setStoryboard(storyboard);
-      console.log(`[Prism] Storyboard done: ${storyboard.panel_count} panels`);
-
-      // Step 2: Generate manga
-      setStage("generating-manga");
-      console.log("[Prism] Step 2: Generating manga images...");
-      const mangaResult = await api.generateManga({
-        text: extractedText,
-        title,
-        character: mangaTheme,
-        num_panels: numPanels,
-        language,
-      });
-      setManga(mangaResult);
-      console.log(`[Prism] Manga done: ${mangaResult.panel_count} panels`);
-
-      // Done
-      setStage("completed");
-    } catch (err) {
-      console.error("[Prism] Generation failed:", err);
-      setError(err instanceof Error ? err.message : "Generation failed, please try again");
-    }
-  };
-
-  const showUploadSection = (stage === "idle" || stage === "uploading" || stage === "parsing") && !manga;
-  const showGenerating = ["generating-storyboard", "generating-manga"].includes(stage);
-  const showResult = stage === "completed" && manga;
-
-  // Debug logging
-  console.log("[Page] Render state:", { stage, showUploadSection, showGenerating, showResult });
+  useEffect(() => {
+    document.documentElement.dataset.calm = calm ? "true" : "false";
+  }, [calm]);
 
   return (
-    <main className="min-h-screen relative overflow-hidden">
-      {/* Background decoration */}
-      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-lavender/30 rounded-full blur-3xl" />
-      </div>
+    <MotionConfig reducedMotion={calm ? "always" : "user"}>
+      <BackgroundDecor />
+      <Suspense fallback={<LoadingScreen />}>
+        <Home />
+      </Suspense>
+    </MotionConfig>
+  );
+}
 
-      {/* Settings panel */}
+function BackgroundDecor() {
+  return (
+    <div className="page-decor pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden="true">
+      <div className="absolute left-10 top-20 h-72 w-72 rounded-full bg-primary/20 blur-3xl" />
+      <div className="absolute bottom-20 right-10 h-96 w-96 rounded-full bg-secondary/20 blur-3xl" />
+      <div className="absolute left-1/2 top-1/2 h-[800px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-lavender/30 blur-3xl" />
+    </div>
+  );
+}
+
+function LoadingScreen() {
+  return (
+    <div className="flex min-h-screen items-center justify-center" role="status">
+      <Loader2 className="h-8 w-8 animate-spin text-primary-500" aria-hidden="true" />
+      <span className="sr-only">Loading…</span>
+    </div>
+  );
+}
+
+function Home() {
+  const params = useSearchParams();
+  const jobId = params.get("job");
+  const demoParam = params.get("demo");
+  const [demo, setDemo] = useState<{ key: string; source: DemoSource } | null>(null);
+
+  // The demo fixture is only downloaded when asked for.
+  useEffect(() => {
+    if (!demoParam) return;
+    let cancelled = false;
+    import("@/lib/demoJob")
+      .then((m) => {
+        if (cancelled) return;
+        setDemo({
+          key: demoParam,
+          source: {
+            job: demoParam === "strip" ? m.demoStripJob : demoParam === "early" ? m.demoEarlyJob : m.demoJob,
+            redraw: m.redrawDemoPanel,
+          },
+        });
+      })
+      .catch(() => {
+        /* chunk failed to load: stay on the loading screen */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [demoParam]);
+
+  const openJob = useCallback((id: string) => navigate(`job=${encodeURIComponent(id)}`), []);
+  const goHome = useCallback(() => {
+    const store = useAppStore.getState();
+    store.clearFile();
+    store.setSettingsOpen(false);
+    navigate("");
+  }, []);
+
+  if (demoParam) {
+    return (
+      <>
+        <SettingsPanel showTrigger={false} />
+        {demo && demo.key === demoParam ? (
+          <JobView key={`demo-${demoParam}`} jobId={null} demo={demo.source} onHome={goHome} onOpenJob={openJob} />
+        ) : (
+          <LoadingScreen />
+        )}
+      </>
+    );
+  }
+
+  if (jobId) {
+    return (
+      <>
+        <SettingsPanel showTrigger={false} />
+        <JobView key={jobId} jobId={jobId} demo={null} onHome={goHome} onOpenJob={openJob} />
+      </>
+    );
+  }
+
+  return <UploadScreen onOpenJob={openJob} />;
+}
+
+function UploadScreen({ onOpenJob }: { onOpenJob: (jobId: string) => void }) {
+  const file = useAppStore((s) => s.file);
+
+  return (
+    <>
       <SettingsPanel />
-
-      <div className="container mx-auto px-4 pb-12">
+      <main className="container mx-auto px-4 pb-12">
         <Header />
 
-        <AnimatePresence mode="popLayout">
-          {/* Upload section */}
-          {showUploadSection && (
-            <motion.div
-              key="upload"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-8"
-            >
-              <Dropzone />
+        <div className="space-y-8">
+          <Dropzone />
 
-              {/* Show options after file upload */}
-              {file && extractedText && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  className="space-y-8"
-                >
-                  {/* Text preview */}
-                  <div className="max-w-2xl mx-auto">
-                    <h3 className="text-lg font-medium mb-2">Content Preview ({extractedText.length.toLocaleString()} chars)</h3>
-                    <div className="p-4 bg-white rounded-2xl shadow-sm max-h-40 overflow-y-auto text-sm text-muted-foreground">
-                      {textPreview}
-                    </div>
-                  </div>
+          <AnimatePresence mode="wait" initial={false}>
+            {file ? (
+              <motion.div
+                key="options"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+              >
+                <GenerateOptions onCreated={onOpenJob} />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="recent"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <RecentJobs onOpen={onOpenJob} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-                  {/* Theme selection */}
-                  <ThemeSelector />
-
-                  {/* Generate button */}
-                  <div className="flex justify-center">
-                    <Button
-                      size="xl"
-                      onClick={handleGenerate}
-                      className="gap-2 px-12"
-                    >
-                      <Wand2 className="w-5 h-5" />
-                      Generate Manga
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
-            </motion.div>
-          )}
-
-          {/* Generation progress */}
-          {showGenerating && (
-            <motion.div
-              key="generating"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <ErrorBoundary onReset={reset}>
-                <GenerationProgress />
-              </ErrorBoundary>
-            </motion.div>
-          )}
-
-          {/* Result display */}
-          {showResult && (
-            <motion.div
-              key="result"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
-              <MangaReader />
-
-              {/* New manga button */}
-              <div className="flex justify-center">
-                <Button variant="outline" onClick={reset} className="gap-2">
-                  <RotateCcw className="w-4 h-4" />
-                  Create New Manga
-                </Button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Error message */}
-          {stage === "error" && error && (
-            <motion.div
-              key="error"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="max-w-md mx-auto text-center"
-            >
-              <div className="p-6 bg-red-50 rounded-3xl border border-red-200">
-                <div className="text-4xl mb-4">😿</div>
-                <h3 className="text-lg font-medium text-red-600 mb-2">
-                  Oops! Something went wrong
-                </h3>
-                <p className="text-red-500 mb-4">{error}</p>
-                <Button variant="outline" onClick={reset}>
-                  Try Again
-                </Button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Footer */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 text-sm text-muted-foreground/50">
-        Powered by Prism
-      </div>
-    </main>
+        <footer className="mt-16 text-center text-sm text-muted-foreground/70">Powered by Prism</footer>
+      </main>
+    </>
   );
 }

@@ -1,0 +1,42 @@
+[
+ {
+  "id": "C1",
+  "q": "What is a 'chain of thought'?",
+  "a": "a series of intermediate reasoning steps"
+ },
+ {
+  "id": "C2",
+  "q": "What does generating a chain of thought improve?",
+  "a": "the ability of large language models to perform complex reasoning"
+ },
+ {
+  "id": "C3",
+  "q": "What is the method, concretely?",
+  "a": "chain-of-thought prompting: a few chain-of-thought demonstrations are given as exemplars in the prompt"
+ },
+ {
+  "id": "C4",
+  "q": "In which models does this reasoning ability emerge?",
+  "a": "in sufficiently large language models (it emerges with scale)"
+ },
+ {
+  "id": "C5",
+  "q": "How many large language models were tested?",
+  "a": "three"
+ },
+ {
+  "id": "C6",
+  "q": "Which kinds of reasoning tasks improved?",
+  "a": "arithmetic, commonsense and symbolic reasoning"
+ },
+ {
+  "id": "C7",
+  "q": "What is the headline result (model, number of exemplars, benchmark)?",
+  "a": "PaLM 540B with just eight chain-of-thought exemplars reaches state-of-the-art accuracy on GSM8K math word problems"
+ },
+ {
+  "id": "C8",
+  "q": "What strong earlier system did that result surpass?",
+  "a": "even finetuned GPT-3 with a verifier"
+ }
+]

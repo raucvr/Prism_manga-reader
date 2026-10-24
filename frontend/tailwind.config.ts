@@ -6,11 +6,15 @@ const config: Config = {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    // class names also live in helpers (speaker colours) and stores (reader text sizes)
+    "./src/lib/**/*.{js,ts,jsx,tsx}",
+    "./src/store/**/*.{js,ts,jsx,tsx}",
+    "./src/hooks/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
       colors: {
-        // Chiikawa 风格配色
+        // 主色：柔和的粉色
         primary: {
           50: "#fef7f7",
           100: "#fdeef0",
@@ -23,6 +27,7 @@ const config: Config = {
           800: "#962841",
           900: "#80263c",
           DEFAULT: "#f8b4bf",
+          foreground: "#4a4a4a",
         },
         secondary: {
           50: "#f0f9ff",
@@ -36,6 +41,23 @@ const config: Config = {
           800: "#065786",
           900: "#0b496f",
           DEFAULT: "#7cd1fd",
+          foreground: "#4a4a4a",
+        },
+        // Design tokens used across components (mirror the CSS variables in globals.css)
+        background: "#FFF8E7",
+        foreground: "#4A4A4A",
+        border: "#E8E0F0",
+        card: {
+          DEFAULT: "#FFFFFF",
+          foreground: "#4A4A4A",
+        },
+        muted: {
+          DEFAULT: "#F0F0F0",
+          foreground: "#6B6B6B",
+        },
+        accent: {
+          DEFAULT: "#FFE4D6",
+          foreground: "#4A4A4A",
         },
         cream: "#FFF8E7",
         peach: "#FFE4D6",
@@ -43,8 +65,13 @@ const config: Config = {
         lavender: "#E8E0F0",
       },
       fontFamily: {
-        sans: ["var(--font-noto)", "Noto Sans SC", "sans-serif"],
-        cute: ["var(--font-cute)", "Comic Neue", "cursive"],
+        // --font-inter is set by next/font in layout.tsx; the var() fallbacks keep the
+        // declaration valid if a variable is missing (otherwise browsers fall back to serif).
+        sans: ["var(--font-inter, ui-sans-serif)", "Noto Sans SC", "system-ui", "sans-serif"],
+        cute: ["var(--font-cute, 'Comic Neue')", "Comic Neue", "cursive"],
+      },
+      borderWidth: {
+        3: "3px",
       },
       borderRadius: {
         "4xl": "2rem",

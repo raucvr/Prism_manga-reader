@@ -10,8 +10,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -47,12 +47,19 @@ desktop.ini
 .env
 .env.local
 .env.*.local
+.env.*
 
-# API config with secrets (use api_config.yaml.example as template)
+# API config with secrets (use api_config.yaml.example as template), copies and backups of it included
 config/api_config.yaml
+config/api_config*.yaml
+config/api_config*.yaml.*
+!config/api_config.yaml.example
 
-# Output files
+# Output files (generated manga jobs)
 output/
+
+# Build artefacts
+frontend/tsconfig.tsbuildinfo
 
 # Keep character reference images
 !config/character_images/**/*.png
@@ -72,6 +79,7 @@ htmlcov/
 # Temporary files
 *.tmp
 *.temp
+*.bak
 .cache/
 
 # Windows special files
@@ -86,3 +94,11 @@ backend/nul
 
 # Misc
 Untitled
+
+# Local run artefacts (start.sh)
+logs/
+.pids/
+frontend/.env.local
+
+# Test papers are downloaded on demand (see backend/tests/fixtures/README.md), not stored in git
+backend/tests/fixtures/*.pdf

@@ -1,0 +1,52 @@
+[
+ {
+  "id": "H1",
+  "q": "Large language models (LMs) often struggle to generate diverse, human-like creative content. What long-term concern does this raise?",
+  "a": "the long-term homogenization of human thought through repeated exposure to similar outputs"
+ },
+ {
+  "id": "H2",
+  "q": "What do the authors say remains limited, especially beyond narrow tasks such as random number or name generation, or beyond repeated sampling from a single model?",
+  "a": "scalable methods for evaluating LM output diversity"
+ },
+ {
+  "id": "H3",
+  "q": "The authors introduce INFINITY-CHAT, a large-scale dataset of diverse, real-world, open-ended user queries that admit a wide range of plausible answers with no single ground truth. How many queries does it contain?",
+  "a": "26K"
+ },
+ {
+  "id": "H4",
+  "q": "The authors introduce the first comprehensive taxonomy of the open-ended prompts posed to LMs, with top-level categories such as creative content generation and brainstorm & ideation. How many top-level categories does it comprise?",
+  "a": "6 top-level categories"
+ },
+ {
+  "id": "H5",
+  "q": "Into how many subcategories do the taxonomy's top-level categories further break down?",
+  "a": "17 subcategories"
+ },
+ {
+  "id": "H6",
+  "q": "Using INFINITY-CHAT, the authors' large-scale study of mode collapse reveals a pronounced Artificial Hivemind effect in the open-ended generation of LMs. Besides intra-model repetition, where a single model consistently generates similar responses, what characterizes this effect even more?",
+  "a": "inter-model homogeneity, where different models produce strikingly similar outputs"
+ },
+ {
+  "id": "H7",
+  "q": "Across absolute ratings and pairwise preferences, how many human annotations does INFINITY-CHAT also include?",
+  "a": "31,250 human annotations"
+ },
+ {
+  "id": "H8",
+  "q": "How many independent human annotations does INFINITY-CHAT have per example, enabling the study of collective and individual-specific human preferences in response to open-ended queries?",
+  "a": "25 independent human annotations per example"
+ },
+ {
+  "id": "H9",
+  "q": "On which model generations are state-of-the-art LMs, reward models, and LM judges less well calibrated to human ratings?",
+  "a": "generations that elicit differing idiosyncratic annotator preferences, despite maintaining comparable overall quality"
+ },
+ {
+  "id": "H10",
+  "q": "INFINITY-CHAT is presented as the first large-scale resource for systematically studying real-world open-ended queries to LMs. What future research do its insights help guide?",
+  "a": "research for mitigating long-term AI safety risks posed by the Artificial Hivemind"
+ }
+]
